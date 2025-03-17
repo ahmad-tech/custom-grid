@@ -11,466 +11,95 @@
   --text-secondary: #a0a0a0;
   --border-color: #333333;
   --highlight: #3b82f6;
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 0, 0, 0;
-  --background-end-rgb: 0, 0, 0;
-}
-
-@theme inline {
-  --color-background: var(--bg-primary);
-  --color-foreground: var(--text-primary);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: var(--text-primary);
+  background: var(--bg-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-html {
-  font-family: sans-serif;
   font-size: 14px;
 }
 
-/* Base table styles */
+/* Table Container */
+.overflow-auto {
+  position: relative;
+  height: calc(100vh - 200px);
+  overflow: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+/* Table Base */
 table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  position: relative;
 }
 
-/* Header styles */
+/* Header */
 thead {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 2;
   background: var(--bg-secondary);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 th {
-  padding: 12px 16px;
+  padding: 12px;
   text-align: left;
-  font-weight: 600;
-  border-bottom: 1px solid var(--border-color);
-  white-space: nowrap;
   background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
   position: relative;
   color: var(--text-primary);
 }
 
-th:first-child {
-  border-top-left-radius: 8px;
-}
-
-th:last-child {
-  border-top-right-radius: 8px;
-}
-
-/* Virtual scroll styles */
-.virtual-scroll-content {
+/* Virtual Rows */
+.virtual-row {
   position: absolute;
-  top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
-  contain: strict;
-}
-
-/* Virtual row styles */
-.virtual-row {
-  display: table-row;
   background: var(--bg-primary);
-  border-bottom: 1px solid var(--border-color);
-  transition: background-color 0.2s;
-  align-items: stretch;
-  width: 100%;
+  z-index: 1;
+  display: flex;
+  height: 40px;
 }
 
 .virtual-row:hover {
-  background-color: var(--bg-hover);
+  background: var(--bg-hover);
 }
 
-/* Virtual cell styles */
+/* Virtual Cells */
 .virtual-cell {
-  padding: 12px 16px;
+  padding: 8px 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background: var(--bg-primary);
-  border-right: 1px solid var(--border-color);
-  box-sizing: border-box;
-  display: table-cell;
-  align-items: center;
-  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color);
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background: inherit;
 }
 
-.virtual-cell:last-child {
-  border-right: none;
-}
-
-.virtual-cell.grouped {
-  background-color: var(--bg-secondary);
-  font-weight: 600;
-}
-
-.virtual-cell.aggregated {
-  background-color: var(--bg-hover);
-  font-style: italic;
-}
-
-/* Group styles */
-.virtual-row.group-row .virtual-cell {
-  background-color: var(--bg-secondary);
-}
-
-.virtual-row.expanded-row .virtual-cell {
-  background-color: var(--bg-hover);
-}
-
-/* Group button in virtual cells */
-.virtual-cell .group-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Column Filter */
+.column-filter {
   width: 100%;
   padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--text-primary);
-  background: none;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.virtual-cell .group-button:hover {
-  background: var(--bg-hover);
-  color: var(--highlight);
-}
-
-/* Remove duplicate styles */
-td, .virtual-cell {
-  padding: 12px 16px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Column separators for virtual cells */
-.virtual-cell:not(:last-child)::after {
-  display: none;
-}
-
-/* Ensure proper table layout */
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  position: relative;
-  table-layout: fixed;
-}
-
-tbody {
-  position: relative;
-}
-
-tbody > tr > td {
-  padding: 0;
-}
-
-.relative {
-  position: relative;
-  width: 100%;
-}
-
-/* Row hover styles */
-tr:hover td {
-  background: var(--bg-hover);
-}
-
-/* Group button */
-.group-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.group-button:hover {
-  background: var(--bg-hover);
-  color: var(--highlight);
-}
-
-/* Group indicator */
-.group-indicator {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  background: var(--highlight);
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-/* Scrollbar */
-.overflow-auto::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.overflow-auto::-webkit-scrollbar-track {
-  background: var(--bg-primary);
-}
-
-.overflow-auto::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-}
-
-.overflow-auto::-webkit-scrollbar-thumb:hover {
-  background: var(--highlight);
-}
-
-/* Row counter */
-.text-secondary {
-  color: #888;
-  margin-top: 12px;
-  font-size: 14px;
-}
-
-/* Navigation controls */
-.pagination-controls {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 16px;
-}
-
-/* Input and select styles */
-input, select {
+  margin-top: 4px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  padding: 4px 8px;
   border-radius: 4px;
+  color: var(--text-primary);
 }
 
-input:focus, select:focus {
+.column-filter:focus {
   outline: none;
   border-color: var(--highlight);
 }
 
-/* Button styles */
-.action-button {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  padding: 4px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.action-button:hover:not(:disabled) {
-  background: var(--bg-hover);
-}
-
-.action-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Group cell styles */
-.bg-emerald-100 {
-  background-color: rgb(209, 250, 229) !important;
-}
-
-/* Aggregated cell styles */
-.bg-amber-50 {
-  background-color: rgb(255, 251, 235) !important;
-}
-
-/* First name column styles */
-.bg-indigo-600 {
-  background-color: rgb(79, 70, 229) !important;
-}
-
-.bg-indigo-600 > div,
-.bg-indigo-600 button {
-  color: white;
-}
-
-/* Remove previous styles that might conflict */
-.table-fixed,
-.whitespace-nowrap,
-td[style*="background"],
-td > button,
-td[style*="background: black"],
-td[style*="background: #0aff0082"] {
-  all: revert;
-}
-
-/* Ensure proper text contrast */
-.text-gray-600 {
-  color: rgb(75, 85, 99);
-}
-
-.text-gray-900 {
-  color: rgb(17, 24, 39);
-}
-
-/* Shadow effects */
-.shadow-sm {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-/* Transitions */
-.transition-all {
-  transition: all 0.2s ease-in-out;
-}
-
-/* Black background styles */
-.bg-black {
-  background-color: black !important;
-}
-
-.bg-black > div,
-.bg-black button {
-  color: white;
-}
-
-/* Group cell styles */
-.bg-\[\#0aff0082\] {
-  background-color: #0aff0082 !important;
-}
-
-/* Aggregated cell styles */
-.bg-\[\#ffa50078\] {
-  background-color: #ffa50078 !important;
-}
-
-/* Placeholder cell styles */
-.bg-\[\#ff000042\] {
-  background-color: #ff000042 !important;
-}
-
-/* Sticky header */
-thead {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--bg-secondary);
-}
-
-/* Ensure proper table layout in scrollable container */
-.table-fixed {
-  table-layout: fixed;
-}
-
-/* Style for black background cells */
-td[style*="background: black"] {
-  padding: 0;  /* Remove default padding since we're using inner div padding */
-}
-
-td[style*="background: black"] > div {
-  height: 100%;
-  display: flex;
-  align-items: center;
-}
-
-/* Ensure text remains white when cell is grouped */
-td[style*="background: black"] button {
-  color: white;
-}
-
-/* Group cells */
-td[style*="background: #0aff0082"] > div,
-td[style*="background: #0aff0082"] > button {
-  background: inherit;
-}
-
-/* Ensure proper sizing */
-.whitespace-nowrap {
-  white-space: nowrap;
-}
-
-/* Ensure proper table layout */
-table {
-  width: 100%;
-  table-layout: fixed;
-}
-
-/* Adjust container for virtual scroll */
-.overflow-auto {
-  position: relative;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  height: 600px;
-  overflow: auto;
-  contain: strict;
-}
-
-/* Ensure proper cell sizing */
-td, th {
-  box-sizing: border-box;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Sortable columns */
-.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.sortable:hover {
-  background-color: var(--bg-hover);
-}
-
-/* Sort indicator */
-.sort-indicator {
-  display: inline-block;
-  margin-left: 4px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  transition: color 0.2s ease;
-}
-
-.sortable:hover .sort-indicator {
-  color: var(--text-primary);
-}
-
-/* Active sort */
-th[aria-sort="ascending"] .sort-indicator,
-th[aria-sort="descending"] .sort-indicator {
-  color: var(--highlight);
-}
-
-/* Column resize handle */
+/* Resizer */
 .resizer {
   position: absolute;
   right: 0;
@@ -482,226 +111,42 @@ th[aria-sort="descending"] .sort-indicator {
   user-select: none;
   touch-action: none;
   opacity: 0;
-  transition: opacity 0.2s ease;
 }
 
 .resizer:hover,
-.isResizing .resizer {
+.resizer.isResizing {
   opacity: 1;
   background: var(--highlight);
 }
 
-/* Column separators */
-th, td {
-  position: relative;
-}
-
-th:not(:last-child)::after,
-td:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 1px;
-  background: var(--border-color);
-}
-
-/* Adjust header padding for resize handle */
-th {
-  padding-right: 20px;
-  position: relative;
-}
-
-/* Ensure content doesn't overlap with resize handle */
-th > div:first-child {
-  width: calc(100% - 10px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Active resize styling */
-.isResizing {
-  background: var(--bg-hover);
-  user-select: none;
-}
-
-/* Table base */
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  table-layout: fixed;
-}
-
-/* Virtual scroll container */
-.virtual-scroll-content {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  contain: strict;
-}
-
-/* Virtual rows */
-tr[style*="position: absolute"] {
-  display: table-row;
-  width: 100%;
-}
-
-/* Cell styles */
-td {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-/* Header styles */
-th {
-  padding: 12px 16px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  text-align: left;
-  font-weight: 500;
-  color: var(--text-primary);
-  position: relative;
-}
-
-/* Header content layout */
-.header-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-right: 16px;
-  width: 100%;
-}
-
-/* Column filter input */
-.column-filter {
-  width: 100%;
-  padding: 4px 8px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  color: var(--text-primary);
-  font-size: 12px;
-}
-
-.column-filter:focus {
-  outline: none;
-  border-color: var(--highlight);
-  box-shadow: 0 0 0 1px var(--highlight);
-}
-
-.column-filter::placeholder {
-  color: var(--text-secondary);
-}
-
-/* Adjust header styles for filters */
-th {
-  padding: 12px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  text-align: left;
-  font-weight: 500;
-  color: var(--text-primary);
-  position: relative;
-  vertical-align: top;
-}
-
-/* Ensure proper header content layout */
-.th-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px;
-  min-height: 100%;
-  position: relative;
-}
-
-.isResizing .resizer {
-  opacity: 1;
-  background: var(--highlight);
-  width: 2px;
-}
-
-/* Group button in virtual cells */
-.virtual-cell .group-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--text-primary);
-  background: none;
-  border: none;
-}
-
-.virtual-cell .group-button:hover {
-  background: var(--bg-hover);
-}
-
-/* New styles from the code block */
-.expanded-row {
-  background-color: #1f1f1f;
-}
-
-/* Virtual cell adjustments */
-.virtual-cell {
-  transition: width 0.2s ease;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Grouping zone styles */
+/* Grouping Zone */
 .grouping-zone {
+  margin-bottom: 1rem;
+  padding: 1rem;
   background: var(--bg-secondary);
   border: 2px dashed var(--border-color);
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  transition: all 0.2s ease;
-}
-
-.grouping-zone:hover,
-.grouping-zone[data-dragging="true"] {
-  border-color: var(--highlight);
-  background: var(--bg-hover);
-}
-
-.grouping-indicator {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .grouping-text {
   color: var(--text-secondary);
-  font-size: 14px;
-  user-select: none;
 }
 
 .active-groups {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 8px;
 }
 
 .group-tag {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 4px 8px;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 13px;
 }
 
 .remove-group {
@@ -710,48 +155,62 @@ th {
   color: var(--text-secondary);
   cursor: pointer;
   padding: 0 4px;
-  font-size: 16px;
-  line-height: 1;
-  transition: color 0.2s ease;
 }
 
 .remove-group:hover {
   color: var(--text-primary);
 }
 
-/* Make headers draggable */
-th {
-  cursor: grab;
+/* Group Button */
+.group-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-primary);
 }
 
-th:active {
-  cursor: grabbing;
+.group-button:hover {
+  color: var(--highlight);
 }
 
-/* Ensure proper spacing */
+/* Header Content */
+.th-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.header-content {
+  padding-right: 16px;
+}
+
+/* Sort Indicator */
+.sort-indicator {
+  display: inline-block;
+  margin-left: 4px;
+  color: var(--text-secondary);
+}
+
+/* Group Styles */
+.group-row {
+  background: var(--bg-secondary);
+  font-weight: 500;
+}
+
+.expanded-row {
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Footer */
+.text-secondary {
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* Utility Classes */
 .p-4 {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* Table layout */
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  position: relative;
-}
-
-tbody {
-  position: relative;
-}
-
-tbody > tr > td {
-  padding: 0;
-}
-
-.relative {
-  position: relative;
-  width: 100%;
+  padding: 1rem;
 }
