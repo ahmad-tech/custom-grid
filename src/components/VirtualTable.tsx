@@ -15,6 +15,8 @@ import {
   ColumnFiltersState,
   ColumnDef,
   ExpandedState,
+  Row,
+  Cell,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
@@ -28,12 +30,23 @@ interface VirtualTableProps<T> {
     columnFilters?: ColumnFiltersState;
     expanded?: ExpandedState;
   };
+  groupDisplayType?: 'single' | 'multiple' | 'groupRows';
+  groupDefaultExpanded?: number;
+  showOpenedGroup?: boolean;
+  groupHideOpenParents?: boolean;
 }
 
-function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) {
+function VirtualTable<T>({
+  data,
+  columns,
+  initialState,
+  groupDisplayType = 'groupRows',
+  showOpenedGroup = true,
+  groupHideOpenParents = false,
+}: VirtualTableProps<T>) {
   // State management
   const [grouping, setGrouping] = React.useState<GroupingState>(initialState?.grouping || []);
-  const [expanded, setExpanded] = React.useState(initialState?.expanded || {});
+  const [expanded, setExpanded] = React.useState<ExpandedState>(initialState?.expanded || {});
   const [sorting, setSorting] = React.useState<SortingState>(initialState?.sorting || []);
   const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(initialState?.columnSizing || {});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(initialState?.columnFilters || []);
@@ -64,9 +77,34 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
     getSortedRowModel: getSortedRowModel(),
     columnResizeMode: 'onChange' as ColumnResizeMode,
     enableColumnResizing: true,
+    enableGrouping: true,
+    enableExpanding: true,
+    groupedColumnMode: groupDisplayType === 'multiple' ? 'remove' : 'reorder',
+    getRowCanExpand: row => row.subRows && row.subRows.length > 0,
     debugTable: true,
-    enableRowSelection: true,
+    debugHeaders: true,
+    debugColumns: true,
   });
+
+  // Initialize expanded state for all groups
+  React.useEffect(() => {
+    if (grouping.length > 0) {
+      const newExpanded: Record<string, boolean> = {};
+      const expandGroups = (rows: Row<T>[]) => {
+        rows.forEach(row => {
+          if (row.getIsGrouped()) {
+            newExpanded[row.id] = true;
+            if (row.subRows && row.subRows.length > 0) {
+              expandGroups(row.subRows);
+            }
+          }
+        });
+      };
+      
+      expandGroups(table.getRowModel().rows);
+      setExpanded(newExpanded);
+    }
+  }, [grouping, table]);
 
   // Add window resize handler
   React.useEffect(() => {
@@ -106,7 +144,7 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
     overscan: 5,
   });
 
-  const scrollToExpandedContent = () => {
+  const scrollToExpandedContent = React.useCallback(() => {
     if (tableContainerRef.current) {
       const containerRect = tableContainerRef.current.getBoundingClientRect();
       const virtualRows = tableContainerRef.current.getElementsByClassName('virtual-row');
@@ -123,7 +161,7 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
         }
       }
     }
-  };
+  }, []);
 
   const renderColumnFilter = (column: Column<T>) => {
     if (!column.getCanFilter()) return null;
@@ -177,15 +215,80 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
     setGrouping(grouping.filter(g => g !== columnId));
   };
 
+  const getGroupIndentation = (row: Row<T>) => {
+    let depth = 0;
+    let currentRow = row;
+    while (currentRow.depth > 0) {
+      depth++;
+      currentRow = currentRow.parentId ? rows.find(r => r.id === currentRow.parentId) as Row<T> : currentRow;
+    }
+    return depth * 20; // 20px per level
+  };
+
+  const renderGroupCell = (cell: Cell<T, unknown>, row: Row<T>) => {
+    const isGrouped = cell.getIsGrouped();
+    const isAggregated = cell.getIsAggregated();
+    const isPlaceholder = cell.getIsPlaceholder();
+    const indentation = getGroupIndentation(row);
+
+    if (isGrouped) {
+      return (
+        <button
+          onClick={() => {
+            row.toggleExpanded();
+            if (!row.getIsExpanded()) {
+              scrollToExpandedContent();
+            }
+          }}
+          className="group-button"
+          style={{ paddingLeft: `${indentation}px` }}
+        >
+          <span className="group-icon">{row.getIsExpanded() ? "▼" : "▶"}</span>
+          <span className="group-value">
+            {typeof cell.column.columnDef.header === 'string' 
+              ? cell.column.columnDef.header 
+              : cell.column.id}: {String(cell.getValue())}
+          </span>
+          <span className="group-count">({row.subRows?.length || 0})</span>
+        </button>
+      );
+    }
+
+    if (isAggregated) {
+      return (
+        <div style={{ paddingLeft: `${indentation}px` }}>
+          {flexRender(
+            cell.column.columnDef.aggregatedCell ?? cell.column.columnDef.cell,
+            cell.getContext()
+          )}
+        </div>
+      );
+    }
+
+    if (isPlaceholder) {
+      return null;
+    }
+
+    return (
+      <div style={{ paddingLeft: showOpenedGroup ? `${indentation}px` : 0 }}>
+        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      </div>
+    );
+  };
+
   return (
-    <div className="p-4">
+    <div className="virtual-table-container">
       <div 
         className="grouping-zone"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
         <div className="grouping-indicator">
-          <span className="grouping-text">Drag here to set row groups</span>
+          <span className="grouping-text">
+            {grouping.length === 0 
+              ? "Drag columns here to group by them" 
+              : "Grouped by:"}
+          </span>
           <div className="active-groups">
             {grouping.map((columnId) => {
               const column = table.getColumn(columnId);
@@ -199,6 +302,7 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
                   <button
                     onClick={() => removeGrouping(columnId)}
                     className="remove-group"
+                    title="Remove grouping"
                   >
                     ×
                   </button>
@@ -208,7 +312,8 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
           </div>
         </div>
       </div>
-      <div ref={tableContainerRef} className="overflow-auto">
+
+      <div ref={tableContainerRef} className="table-container">
         <table>
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -220,11 +325,12 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
                     className={`
                       ${header.column.getCanSort() ? 'sortable' : ''}
                       ${header.column.getIsResizing() ? 'isResizing' : ''}
+                      ${header.column.getCanGroup() ? 'groupable' : ''}
                     `}
                     style={{
                       width: header.getSize(),
                     }}
-                    draggable={!header.isPlaceholder}
+                    draggable={!header.isPlaceholder && header.column.getCanGroup()}
                     onDragStart={() => handleDragStart(header.column.id)}
                     onDragEnd={handleDragEnd}
                   >
@@ -232,30 +338,34 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
                       <div className="th-content">
                         <div className="header-content">
                           <div
-                            className="flex items-center gap-2"
+                            className="header-cell"
                             onClick={header.column.getToggleSortingHandler()}
                           >
                             {flexRender(
                               header.column.columnDef.header,
                               header.getContext()
                             )}
-                            <span className="sort-indicator">
-                              {header.column.getIsSorted() === "asc" 
-                                ? " ↑" 
-                                : header.column.getIsSorted() === "desc" 
-                                ? " ↓" 
-                                : " ↕"}
-                            </span>
+                            {header.column.getCanSort() && (
+                              <span className="sort-indicator">
+                                {header.column.getIsSorted() === "asc" 
+                                  ? " ↑" 
+                                  : header.column.getIsSorted() === "desc" 
+                                  ? " ↓" 
+                                  : " ↕"}
+                              </span>
+                            )}
                           </div>
                           {!header.isPlaceholder && renderColumnFilter(header.column)}
                         </div>
-                        <div
-                          onMouseDown={header.getResizeHandler()}
-                          onTouchStart={header.getResizeHandler()}
-                          className={`resizer ${
-                            header.column.getIsResizing() ? 'isResizing' : ''
-                          }`}
-                        />
+                        {header.column.getCanResize() && (
+                          <div
+                            onMouseDown={header.getResizeHandler()}
+                            onTouchStart={header.getResizeHandler()}
+                            className={`resizer ${
+                              header.column.getIsResizing() ? 'isResizing' : ''
+                            }`}
+                          />
+                        )}
                       </div>
                     )}
                   </th>
@@ -268,11 +378,20 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
               const row = rows[virtualRow.index];
               if (!row) return null;
 
+              if (groupHideOpenParents && row.getIsGrouped() && row.getIsExpanded()) {
+                return null;
+              }
+
               return (
                 <tr
                   key={row.id}
                   data-index={virtualRow.index}
-                  className={`virtual-row ${row.getIsGrouped() ? 'group-row' : ''} ${row.getIsExpanded() ? 'expanded-row' : ''}`}
+                  className={`
+                    virtual-row
+                    ${row.getIsGrouped() ? 'group-row' : ''}
+                    ${row.getIsExpanded() ? 'expanded-row' : ''}
+                    ${row.depth > 0 ? `indent-${row.depth}` : ''}
+                  `}
                   style={{
                     position: 'absolute',
                     top: `${virtualRow.start}px`,
@@ -281,43 +400,22 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
                     height: `${virtualRow.size}px`,
                   }}
                 >
-                  {row.getVisibleCells().map((cell) => {
-                    const isGrouped = cell.getIsGrouped();
-                    const isAggregated = cell.getIsAggregated();
-                    const isPlaceholder = cell.getIsPlaceholder();
-
-                    return (
-                      <td
-                        key={cell.id}
-                        className={`virtual-cell ${isGrouped ? 'grouped' : ''} ${isAggregated ? 'aggregated' : ''}`}
-                        style={{
-                          width: `${cell.column.getSize()}px`,
-                          minWidth: `${cell.column.columnDef.minSize}px`,
-                        }}
-                      >
-                        {isGrouped ? (
-                          <button
-                            onClick={() => {
-                              row.toggleExpanded();
-                              if (!row.getIsExpanded()) {
-                                setTimeout(scrollToExpandedContent, 0);
-                              }
-                            }}
-                            className="group-button"
-                          >
-                            {row.getIsExpanded() ? "▼" : "▶"} {flexRender(cell.column.columnDef.cell, cell.getContext())} ({row.subRows?.length || 0})
-                          </button>
-                        ) : isAggregated ? (
-                          flexRender(
-                            cell.column.columnDef.aggregatedCell ?? cell.column.columnDef.cell,
-                            cell.getContext()
-                          )
-                        ) : isPlaceholder ? null : (
-                          flexRender(cell.column.columnDef.cell, cell.getContext())
-                        )}
-                      </td>
-                    );
-                  })}
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className={`
+                        virtual-cell
+                        ${cell.getIsGrouped() ? 'grouped' : ''}
+                        ${cell.getIsAggregated() ? 'aggregated' : ''}
+                      `}
+                      style={{
+                        width: `${cell.column.getSize()}px`,
+                        minWidth: `${cell.column.columnDef.minSize}px`,
+                      }}
+                    >
+                      {renderGroupCell(cell, row)}
+                    </td>
+                  ))}
                 </tr>
               );
             })}
@@ -340,8 +438,10 @@ function VirtualTable<T>({ data, columns, initialState }: VirtualTableProps<T>) 
           </tfoot>
         </table>
       </div>
-      <div className="text-secondary">
-        {table.getRowModel().rows.length} Rows
+      <div className="table-footer">
+        <span className="row-count">
+          {table.getRowModel().rows.length} Rows
+        </span>
       </div>
     </div>
   );
