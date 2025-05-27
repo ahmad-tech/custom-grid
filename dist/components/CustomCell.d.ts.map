@@ -1,0 +1,1 @@
+{"version":3,"file":"CustomCell.d.ts","sourceRoot":"","sources":["../../src/components/CustomCell.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAE1B,UAAU,eAAe;IACrB,QAAQ,EAAE,MAAM,CAAC;IACjB,KAAK,EAAE,MAAM,CAAC;IACd,IAAI,EAAE,GAAG,CAAC;CACX;AAEH,QAAA,MAAM,UAAU,EAAE,KAAK,CAAC,EAAE,CAAC,eAAe,CAMzC,CAAC;AAEF,eAAe,UAAU,CAAC"}

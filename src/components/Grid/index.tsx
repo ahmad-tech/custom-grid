@@ -1250,11 +1250,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                             </span>
                           </TooltipTrigger>
                           <TooltipContent className="">
-                            {col.tooltipField &&
-                            row?.[col.tooltipField] !== undefined &&
-                            row?.[col.tooltipField] !== null &&
-                            row?.[col.tooltipField] !== ""
-                              ? row?.[col.tooltipField]
+                            {col.tooltipField && row?.[col.tooltipField]
+                              ? String(row[col.tooltipField])
                               : col.rowGroup
                                 ? ""
                                 : formatCellValue(cellValue, row || {}, col)}
@@ -1527,23 +1524,14 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                   {rowSelection && (
                     <TableHead className="w-[50px]">
                       <div className="w-[30px] flex justify-center items-center">
-                        {rowSelection.mode === "multiple" && (
-                          <Checkbox
-                            checked={
-                              Object.keys(selectedRows).length > 0 &&
-                              Object.keys(selectedRows).length ===
-                                gridData.length
-                            }
-                            indeterminate={
-                              Object.keys(selectedRows).length > 0 &&
-                              Object.keys(selectedRows).length < gridData.length
-                            }
-                            onCheckedChange={handleHeaderCheckboxChange}
-                            className={
-                              "border-1 border-gray-400 cursor-pointer"
-                            }
-                          />
-                        )}
+                        <Checkbox
+                          checked={
+                            Object.keys(selectedRows).length > 0 &&
+                            Object.keys(selectedRows).length === gridData.length
+                          }
+                          onCheckedChange={handleHeaderCheckboxChange}
+                          className={"border-1 border-gray-400 cursor-pointer"}
+                        />
                       </div>
                     </TableHead>
                   )}

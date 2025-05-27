@@ -2,7 +2,10 @@
   "compilerOptions": {
     "target": "es5",
     "module": "esnext",
-    "lib": ["dom", "esnext"],
+    "lib": [
+      "dom",
+      "esnext"
+    ],
     "jsx": "react",
     "declaration": true,
     "declarationDir": "dist",
@@ -16,13 +19,26 @@
     "rootDir": "src",
     "baseUrl": "src",
     "paths": {
-      "@/*": ["./*"],
-      "@lib/*": ["./lib/*"],
-      "@components/*": ["./components/*"],
-      "@types/*": ["./types/*"]
+      "@/*": [
+        "./*"
+      ],
+      "@lib/*": [
+        "./lib/*"
+      ],
+      "@components/*": [
+        "./components/*"
+      ],
+      "@types/*": [
+        "./types/*"
+      ]
     },
     "declarationMap": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
-} 
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

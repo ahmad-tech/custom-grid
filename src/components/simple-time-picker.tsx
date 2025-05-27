@@ -3,6 +3,7 @@
  * Check out the live demo at https://shadcn-datetime-picker-pro.vercel.app/
  * Find the latest source code at https://github.com/huybuidac/shadcn-datetime-picker
  */
+import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Popover,
