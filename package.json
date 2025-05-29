@@ -1,6 +1,6 @@
 {
-  "name": "grid-tool",
-  "version": "1.2.1",
+  "name": "grid-tool-internal",
+  "version": "1.2.2",
   "description": "A React component library with advanced grid functionality",
   "type": "module",
   "main": "dist/index.js",

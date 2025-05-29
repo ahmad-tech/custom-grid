@@ -219,27 +219,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           future: [],
         });
 
-        if (propColumns && propColumns.length > 0) {
-          // Separate grouped and non-grouped columns
-          const groupedCols = propColumns.filter(
-            (col) => col.rowGroup && col.visible !== false
-          );
-          const nonGroupedCols = propColumns.filter(
-            (col) => !col.rowGroup && col.visible !== false
-          );
-
-          // Combine with grouped columns first
-          setColumns([...groupedCols, ...nonGroupedCols]);
-
-          // Initialize groupedColumns from columns with rowGroup=true
-          const initialGroupedColumns = groupedCols.map((col) => col.field);
-          if (initialGroupedColumns.length > 0) {
-            setGroupedColumns(initialGroupedColumns);
-          }
-
-          return;
-        }
-
         const firstItem = cookedData[0];
         const extracted = Object.keys(firstItem)
           .filter((key) => key !== "children")
@@ -260,6 +239,27 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           );
 
         setColumns(extracted);
+      }
+
+      if (propColumns && propColumns.length > 0) {
+        // Separate grouped and non-grouped columns
+        const groupedCols = propColumns.filter(
+          (col) => col.rowGroup && col.visible !== false
+        );
+        const nonGroupedCols = propColumns.filter(
+          (col) => !col.rowGroup && col.visible !== false
+        );
+
+        // Combine with grouped columns first
+        setColumns([...groupedCols, ...nonGroupedCols]);
+
+        // Initialize groupedColumns from columns with rowGroup=true
+        const initialGroupedColumns = groupedCols.map((col) => col.field);
+        if (initialGroupedColumns.length > 0) {
+          setGroupedColumns(initialGroupedColumns);
+        }
+
+        return;
       }
     }, [data, propColumns]);
 
