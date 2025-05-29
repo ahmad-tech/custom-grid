@@ -1665,7 +1665,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               </TableBody>
             </Table>
           </div>
-          {showGroupByPanel && flattenedRows.length !== 0 && (
+          {showGroupByPanel && (
             <div
               style={{
                 width: "auto",

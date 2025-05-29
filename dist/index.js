@@ -2617,25 +2617,6 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         present: cookedData,
         future: []
       });
-      if (propColumns && propColumns.length > 0) {
-        // Separate grouped and non-grouped columns
-        var groupedCols = propColumns.filter(function (col) {
-          return col.rowGroup && col.visible !== false;
-        });
-        var nonGroupedCols = propColumns.filter(function (col) {
-          return !col.rowGroup && col.visible !== false;
-        });
-        // Combine with grouped columns first
-        setColumns(tslib.__spreadArray(tslib.__spreadArray([], groupedCols, true), nonGroupedCols, true));
-        // Initialize groupedColumns from columns with rowGroup=true
-        var initialGroupedColumns = groupedCols.map(function (col) {
-          return col.field;
-        });
-        if (initialGroupedColumns.length > 0) {
-          setGroupedColumns(initialGroupedColumns);
-        }
-        return;
-      }
       var firstItem_1 = cookedData[0];
       var extracted = Object.keys(firstItem_1).filter(function (key) {
         return key !== "children";
@@ -2652,6 +2633,25 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         };
       });
       setColumns(extracted);
+    }
+    if (propColumns && propColumns.length > 0) {
+      // Separate grouped and non-grouped columns
+      var groupedCols = propColumns.filter(function (col) {
+        return col.rowGroup && col.visible !== false;
+      });
+      var nonGroupedCols = propColumns.filter(function (col) {
+        return !col.rowGroup && col.visible !== false;
+      });
+      // Combine with grouped columns first
+      setColumns(tslib.__spreadArray(tslib.__spreadArray([], groupedCols, true), nonGroupedCols, true));
+      // Initialize groupedColumns from columns with rowGroup=true
+      var initialGroupedColumns = groupedCols.map(function (col) {
+        return col.field;
+      });
+      if (initialGroupedColumns.length > 0) {
+        setGroupedColumns(initialGroupedColumns);
+      }
+      return;
     }
   }, [data, propColumns]);
   // Update filters and trigger debounced update
