@@ -1891,6 +1891,7 @@ var TextEditor = function (_a) {
     placeholder = _a.placeholder,
     onBlur = _a.onBlur;
   return /*#__PURE__*/React.createElement(Input, {
+    type: "text",
     value: value,
     autoFocus: true,
     onChange: function (e) {
@@ -1899,7 +1900,7 @@ var TextEditor = function (_a) {
     onBlur: onBlur,
     onKeyDown: onKeyDown,
     placeholder: placeholder,
-    className: "h-8 py-1 px-2 text-sm"
+    className: "h-8 text-sm"
   });
 };
 var NumberEditor = function (_a) {
@@ -1943,7 +1944,7 @@ var NumberEditor = function (_a) {
     max: max,
     step: step,
     placeholder: placeholder,
-    className: "h-8 py-1 px-2 text-sm"
+    className: "h-8 text-sm"
   });
 };
 var SelectEditor = function (_a) {
@@ -2041,7 +2042,6 @@ var TimeEditor = function (_a) {
   var value = _a.value,
     onChange = _a.onChange;
   var timeNow = new Date(value);
-  console.log(timeNow);
   // Helper to convert "HH:mm" string to Date object (today's date)
   // const parseTimeStringToDate = (timeStr: string | null): Date => {
   //   if (!timeStr) return new Date();
@@ -2063,9 +2063,7 @@ var TimeEditor = function (_a) {
   // const [timeValue, setTimeValue] = React.useState<Date>(
   //   typeof value === "string" ? parseTimeStringToDate(value) : new Date()
   // );
-  var handleTimeChange = function (date) {
-    console.log(date);
-  };
+  var handleTimeChange = function () {};
   return /*#__PURE__*/React.createElement(SimpleTimePicker, {
     use12HourFormat: true,
     value: timeNow,
@@ -2112,7 +2110,7 @@ var CellEditor = function (_a) {
     hideTime: false
   } : {};
   return Editor ? (/*#__PURE__*/React.createElement("div", {
-    className: "w-full h-full flex items-center justify-center"
+    className: "w-full ".concat(editorType === "text" || editorType === "number" ? "px-2" : "", " h-full flex items-center justify-center")
   }, /*#__PURE__*/React.createElement(Editor, tslib.__assign({}, editorProps, additionalProps)))) : (/*#__PURE__*/React.createElement(React.Fragment, null, String(value || "")));
 };
 
@@ -2409,6 +2407,86 @@ var CellFilter = function (_a) {
   })))));
 };
 
+var ServerPagination = function (_a) {
+  var _b, _c, _d;
+  var paginationProps = _a.paginationProps,
+    _e = _a.data,
+    data = _e === void 0 ? [] : _e;
+  var _f = paginationProps || {},
+    _g = _f.paginationPageSize,
+    paginationPageSize = _g === void 0 ? 10 : _g,
+    _h = _f.paginationPageSizeSelector,
+    paginationPageSizeSelector = _h === void 0 ? [10] : _h,
+    paginationInfo = _f.paginationInfo,
+    onPageChange = _f.onPageChange,
+    onPageSizeChange = _f.onPageSizeChange;
+  // to handle navigation between pages
+  var handlePageChange = function (page) {
+    if (onPageChange) {
+      onPageChange(page);
+    }
+  };
+  // to handle navigation between page size
+  var handlePageSizeChange = function (size) {
+    if (onPageSizeChange) {
+      onPageSizeChange(size);
+    }
+  };
+  var pageSize = (paginationInfo === null || paginationInfo === void 0 ? void 0 : paginationInfo.pageSize) || paginationPageSize;
+  var currentPage = (paginationInfo === null || paginationInfo === void 0 ? void 0 : paginationInfo.page) || 1;
+  var totalPages = (paginationInfo === null || paginationInfo === void 0 ? void 0 : paginationInfo.totalPages) || 1;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, paginationProps && (data === null || data === void 0 ? void 0 : data.length) && (/*#__PURE__*/React.createElement("div", {
+    className: "w-full py-1 pr-4 bg-white mt-2 bg flex items-center gap-6 justify-end"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("h2", null, "Page Size"), /*#__PURE__*/React.createElement("select", {
+    className: "border rounded px-2",
+    value: pageSize,
+    onChange: function (e) {
+      return handlePageSizeChange(Number(e.target.value));
+    }
+  }, paginationPageSizeSelector === null || paginationPageSizeSelector === void 0 ? void 0 : paginationPageSizeSelector.map(function (size) {
+    return /*#__PURE__*/React.createElement("option", {
+      key: size,
+      value: size
+    }, size);
+  }))), /*#__PURE__*/React.createElement("h2", null, data.length === 0 ? "0" : "".concat(((currentPage - 1) * pageSize + 1).toLocaleString(), " to ").concat(((currentPage - 1) * pageSize + data.length).toLocaleString(), " of "), /*#__PURE__*/React.createElement("strong", null, (_c = (_b = paginationInfo === null || paginationInfo === void 0 ? void 0 : paginationInfo.totalCount) === null || _b === void 0 ? void 0 : _b.toLocaleString()) !== null && _c !== void 0 ? _c : (_d = data.length) === null || _d === void 0 ? void 0 : _d.toLocaleString())), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement("button", {
+    disabled: currentPage === 1,
+    className: "cursor-pointer ".concat(currentPage === 1 ? "text-gray-500" : ""),
+    onClick: function () {
+      return handlePageChange(1);
+    }
+  }, /*#__PURE__*/React.createElement(lucideReact.ChevronFirst, {
+    size: 15
+  })), /*#__PURE__*/React.createElement("button", {
+    disabled: currentPage === 1,
+    className: "cursor-pointer ".concat(currentPage === 1 ? "text-gray-500" : ""),
+    onClick: function () {
+      return handlePageChange(currentPage - 1);
+    }
+  }, /*#__PURE__*/React.createElement(lucideReact.ChevronLeft, {
+    size: 15
+  })), /*#__PURE__*/React.createElement("h2", null, "Page ", currentPage === null || currentPage === void 0 ? void 0 : currentPage.toLocaleString(), " of", " ", totalPages === null || totalPages === void 0 ? void 0 : totalPages.toLocaleString()), /*#__PURE__*/React.createElement("button", {
+    disabled: currentPage === totalPages,
+    className: "cursor-pointer ".concat(currentPage === totalPages ? "text-gray-500" : ""),
+    onClick: function () {
+      return handlePageChange(currentPage + 1);
+    }
+  }, /*#__PURE__*/React.createElement(lucideReact.ChevronRight, {
+    size: 15
+  })), /*#__PURE__*/React.createElement("button", {
+    disabled: currentPage === totalPages,
+    className: "cursor-pointer ".concat(currentPage === totalPages ? "text-gray-500" : ""),
+    onClick: function () {
+      return handlePageChange(totalPages);
+    }
+  }, /*#__PURE__*/React.createElement(lucideReact.ChevronLast, {
+    size: 15
+  }))))));
+};
+
 var GroupPanel = function (_a) {
   var showGroupByPanel = _a.showGroupByPanel,
     groupedColumns = _a.groupedColumns,
@@ -2449,6 +2527,154 @@ var GroupPanel = function (_a) {
   })));
 };
 
+/**
+ * Sidebar component for toggling column visibility, searching columns,
+ * and managing row grouping in the DataGrid.
+ */
+var ColumnSidebar = function (_a) {
+  var columns = _a.columns,
+    setColumns = _a.setColumns,
+    search = _a.search,
+    setSearch = _a.setSearch,
+    showGroupByPanel = _a.showGroupByPanel,
+    _b = _a.groupedColumns,
+    groupedColumns = _b === void 0 ? [] : _b,
+    setColumnGrouped = _a.setColumnGrouped,
+    handleGroupDrop = _a.handleGroupDrop;
+  return /*#__PURE__*/React.createElement("aside", {
+    style: {
+      backgroundColor: "#1f2937",
+      color: "#ffffff",
+      padding: "1rem",
+      borderLeft: "1px solid #374151",
+      width: "280px",
+      display: "flex",
+      flexDirection: "column",
+      height: "480px",
+      overflowY: "auto",
+      overflowX: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0.75rem 1rem",
+      borderBottom: "1px solid #353945"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "0.5rem",
+      marginBottom: "0.75rem"
+    }
+  }, /*#__PURE__*/React.createElement(Checkbox, {
+    style: {
+      borderWidth: 1,
+      borderColor: "#9ca3af",
+      cursor: "pointer"
+    },
+    checked: columns.every(function (col) {
+      return col.visible !== false;
+    }),
+    onCheckedChange: function (checked) {
+      return setColumns(function (cols) {
+        return cols.map(function (c) {
+          return tslib.__assign(tslib.__assign({}, c), {
+            visible: checked
+          });
+        });
+      });
+    },
+    className: undefined
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "Search...",
+    value: search,
+    onChange: function (e) {
+      return setSearch(e.target.value);
+    },
+    style: {
+      backgroundColor: "#232733",
+      border: "1px solid #353945",
+      borderRadius: "0.25rem",
+      padding: "0.25rem 0.5rem",
+      color: "#ffffff",
+      width: "100%",
+      outline: "none"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "0.5rem",
+      maxHeight: "10rem",
+      overflowY: "auto"
+    }
+  }, columns.filter(function (col) {
+    return col.headerName.toLowerCase().includes(search.toLowerCase());
+  }).map(function (col, idx) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: col.field,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem"
+      }
+    }, /*#__PURE__*/React.createElement(Checkbox, {
+      checked: col.visible !== false,
+      onCheckedChange: function (checked) {
+        return setColumns(function (cols) {
+          return cols.map(function (c, i) {
+            return i === idx ? tslib.__assign(tslib.__assign({}, c), {
+              visible: checked
+            }) : c;
+          });
+        });
+      },
+      style: {
+        borderWidth: 1,
+        borderColor: "#9ca3af",
+        cursor: "pointer"
+      },
+      className: undefined
+    }), /*#__PURE__*/React.createElement(lucideReact.GripVertical, {
+      style: {
+        width: "1rem",
+        height: "1rem",
+        color: "#9ca3af",
+        cursor: "move"
+      }
+    }), /*#__PURE__*/React.createElement("span", null, col.headerName));
+  }))), showGroupByPanel && setColumnGrouped && handleGroupDrop && (/*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0.75rem 1rem",
+      borderBottom: "1px solid #353945",
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: "0.5rem",
+      display: "flex",
+      alignItems: "center",
+      gap: "0.5rem"
+    }
+  }, /*#__PURE__*/React.createElement(lucideReact.List, {
+    style: {
+      width: "1rem",
+      height: "1rem"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, "Row Groups")), /*#__PURE__*/React.createElement(GroupPanel, {
+    showGroupByPanel: showGroupByPanel,
+    groupedColumns: groupedColumns,
+    columns: columns,
+    setColumnGrouped: setColumnGrouped,
+    handleGroupDrop: handleGroupDrop
+  }))));
+};
+
 var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   var _b = _a.data,
     data = _b === void 0 ? [] : _b,
@@ -2463,76 +2689,94 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     showGroupByPanel = _e === void 0 ? false : _e,
     _f = _a.isChild,
     isChild = _f === void 0 ? false : _f,
-    rowSelection = _a.rowSelection;
+    rowSelection = _a.rowSelection,
+    // props for pagination
+    pagination = _a.pagination,
+    // prop for filtering
+    onFilterChange = _a.onFilterChange,
+    _g = _a.rowModelType,
+    rowModelType = _g === void 0 ? "clientSide" : _g,
+    // default to client-side row model
+    onSortChange = _a.onSortChange,
+    // for sorting
+    sortModel = _a.sortModel,
+    onRowGroup = _a.onRowGroup;
+  var isServerSide = rowModelType === "serverSide";
   var getCookedData = useCookedData(columnDefs).getCookedData;
-  var _g = columnDefs.columns,
-    propColumns = _g === void 0 ? [] : _g,
-    _h = columnDefs.masterDetail,
-    masterDetail = _h === void 0 ? false : _h,
-    _j = columnDefs.detailGridOptions,
-    detailGridOptions = _j === void 0 ? {} : _j,
-    _k = columnDefs.getDetailRowData,
-    getDetailRowData = _k === void 0 ? undefined : _k,
-    _l = columnDefs.aggFuncs,
-    aggFuncs = _l === void 0 ? {} : _l,
-    _m = columnDefs.grandTotalRow,
-    grandTotalRow = _m === void 0 ? "none" : _m,
-    _o = columnDefs.tableLayout,
-    tableLayout = _o === void 0 ? "fixed" : _o;
+  var _h = columnDefs.columns,
+    propColumns = _h === void 0 ? [] : _h,
+    _j = columnDefs.masterDetail,
+    masterDetail = _j === void 0 ? false : _j,
+    _k = columnDefs.detailGridOptions,
+    detailGridOptions = _k === void 0 ? {} : _k,
+    _l = columnDefs.getDetailRowData,
+    getDetailRowData = _l === void 0 ? undefined : _l,
+    _m = columnDefs.aggFuncs,
+    aggFuncs = _m === void 0 ? {} : _m,
+    _o = columnDefs.grandTotalRow,
+    grandTotalRow = _o === void 0 ? "none" : _o,
+    _p = columnDefs.tableLayout,
+    tableLayout = _p === void 0 ? "fixed" : _p;
   // State
-  var _p = React.useState([]),
-    gridData = _p[0],
-    setGridData = _p[1];
   var _q = React.useState([]),
-    columns = _q[0],
-    setColumns = _q[1];
-  var _r = React.useState({
+    gridData = _q[0],
+    setGridData = _q[1];
+  var _r = React.useState([]),
+    columns = _r[0],
+    setColumns = _r[1];
+  var _s = React.useState({
       key: null,
       direction: "asc"
     }),
-    sortConfig = _r[0],
-    setSortConfig = _r[1];
-  var _s = React.useState({}),
-    filters = _s[0],
-    setFilters = _s[1];
+    sortConfig = _s[0],
+    setSortConfig = _s[1];
   var _t = React.useState({}),
-    filterTypes = _t[0],
-    setFilterTypes = _t[1];
+    filters = _t[0],
+    setFilters = _t[1];
   var _u = React.useState({}),
-    debouncedFilters = _u[0],
-    setDebouncedFilters = _u[1];
-  var _v = React.useState([]),
-    groupedColumns = _v[0],
-    setGroupedColumns = _v[1];
-  var _w = React.useState({}),
-    expandedGroups = _w[0],
-    setExpandedGroups = _w[1];
+    filterTypes = _u[0],
+    setFilterTypes = _u[1];
+  var _v = React.useState({}),
+    debouncedFilters = _v[0],
+    setDebouncedFilters = _v[1];
+  var _w = React.useState([]),
+    groupedColumns = _w[0],
+    setGroupedColumns = _w[1];
   var _x = React.useState({}),
-    selectedRows = _x[0],
-    setSelectedRows = _x[1];
+    expandedGroups = _x[0],
+    setExpandedGroups = _x[1];
+  var _y = React.useState({}),
+    selectedRows = _y[0],
+    setSelectedRows = _y[1];
+  // for server-side row grouping
+  React.useEffect(function () {
+    if (isServerSide && onRowGroup) {
+      onRowGroup(groupedColumns);
+    }
+  }, [groupedColumns]);
   // Column drag & drop
-  var _y = React.useState(null),
-    draggedColumn = _y[0],
-    setDraggedColumn = _y[1];
   var _z = React.useState(null),
-    dragOverColumn = _z[0],
-    setDragOverColumn = _z[1];
+    draggedColumn = _z[0],
+    setDraggedColumn = _z[1];
+  var _0 = React.useState(null),
+    dragOverColumn = _0[0],
+    setDragOverColumn = _0[1];
   var columnDragCounter = React.useRef(0);
   var tableRef = React.useRef(null);
   // Cell editing
-  var _0 = React.useState(null),
-    editingCell = _0[0],
-    setEditingCell = _0[1];
-  var _1 = React.useState(""),
-    editValue = _1[0],
-    setEditValue = _1[1];
+  var _1 = React.useState(null),
+    editingCell = _1[0],
+    setEditingCell = _1[1];
+  var _2 = React.useState(""),
+    editValue = _2[0],
+    setEditValue = _2[1];
   // Master/Detail
-  var _2 = React.useState({}),
-    expandedRows = _2[0],
-    setExpandedRows = _2[1];
   var _3 = React.useState({}),
-    detailData = _3[0],
-    setDetailData = _3[1];
+    expandedRows = _3[0],
+    setExpandedRows = _3[1];
+  var _4 = React.useState({}),
+    detailData = _4[0],
+    setDetailData = _4[1];
   // Create debounced filter handler using useCallback to maintain reference
   var debouncedFnRef = React.useRef(undefined);
   var debouncedSetFilters = React.useCallback(function (newFilters) {
@@ -2545,13 +2789,13 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     debouncedFnRef.current(newFilters);
   }, []);
   // Add undo/redo state
-  var _4 = React.useState({
+  var _5 = React.useState({
       past: [],
       present: data,
       future: []
     }),
-    history = _4[0],
-    setHistory = _4[1];
+    history = _5[0],
+    setHistory = _5[1];
   // Add undo/redo handlers
   var canUndo = history.past.length > 0;
   var canRedo = history.future.length > 0;
@@ -2661,6 +2905,28 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     setFilters(newFilters);
     debouncedSetFilters(newFilters);
   }, [filters, debouncedSetFilters]);
+  // for filtering on server side
+  React.useEffect(function () {
+    if (isServerSide && onFilterChange && filters) {
+      // Build AG Grid-style filterModel
+      var filterModel_1 = {};
+      Object.entries(filters).forEach(function (_a) {
+        var field = _a[0],
+          value = _a[1];
+        if (value !== undefined && value !== "") {
+          var col = columns.find(function (c) {
+            return c.field === field;
+          });
+          filterModel_1[field] = {
+            filterType: (col === null || col === void 0 ? void 0 : col.type) || "text",
+            type: filterTypes[field] || "contains",
+            filter: value
+          };
+        }
+      });
+      onFilterChange(filterModel_1);
+    }
+  }, [filters]);
   // Cleanup debounce on unmount
   React.useEffect(function () {
     return function () {
@@ -2677,6 +2943,10 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   }, []);
   // Update filteredData to use filter types
   var filteredData = React.useMemo(function () {
+    // If server-side filtering is enabled, just return all gridData (parent will handle filtering)
+    if (isServerSide) {
+      return gridData;
+    }
     if (!gridData || gridData.length === 0) {
       return [];
     }
@@ -2758,6 +3028,33 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   // 2) Sorting
   // ----------------------------
   var handleSort = React.useCallback(function (field) {
+    if (isServerSide && onSortChange) {
+      // Get current sort direction for this field from sortModel prop
+      var currentSort = (typeof sortModel !== "undefined" ? sortModel.find(function (s) {
+        return s.colName === field;
+      }) : undefined) || {
+        sort: undefined
+      };
+      var direction_1;
+      if (!currentSort.sort) {
+        direction_1 = "asc";
+      } else if (currentSort.sort === "asc") {
+        direction_1 = "desc";
+      } else if (currentSort.sort === "desc") {
+        direction_1 = "asc"; // Remove sort
+      }
+      // Remove this column from previous sorts
+      var filtered = typeof sortModel !== "undefined" ? sortModel.filter(function (s) {
+        return s.colName !== field;
+      }) : [];
+      // If direction is undefined, just remove the sort for this column
+      var newSortModel = direction_1 ? [{
+        colName: field,
+        sort: direction_1
+      }] : filtered;
+      onSortChange(newSortModel);
+      return;
+    }
     var direction = "asc";
     if (sortConfig.key === field && sortConfig.direction === "asc") {
       direction = "desc";
@@ -2953,6 +3250,24 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     });
   }, []);
   var setColumnGrouped = React.useCallback(function (field, grouped) {
+    // If server-side grouping is enabled, notify parent and skip client grouping
+    if (isServerSide && onRowGroup) {
+      // Build the new groupedColumns array
+      setGroupedColumns(function (prev) {
+        var newGrouped;
+        if (grouped) {
+          newGrouped = prev.includes(field) ? prev : tslib.__spreadArray(tslib.__spreadArray([], prev, true), [field], false);
+        } else {
+          newGrouped = prev.filter(function (f) {
+            return f !== field;
+          });
+        }
+        // Notify parent to fetch grouped data from server
+        onRowGroup(newGrouped);
+        return newGrouped;
+      });
+      return; // Do not do client-side grouping
+    }
     // Update columns
     var newColumns = columns.map(function (col) {
       if (col.field === field) {
@@ -2989,7 +3304,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         });
       }
     });
-  }, [columns]);
+  }, [columns, isServerSide, onRowGroup]);
   // ----------------------------
   // Group & Flatten Data for Virtualization
   // ----------------------------
@@ -3029,6 +3344,17 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     }
   }, [aggFuncs]);
   var groupedData = React.useMemo(function () {
+    var _a;
+    // If server-side grouping is enabled, always use the data as provided by the parent
+    if (isServerSide && onRowGroup) {
+      // Only use data if it's grouped (has isGroup), otherwise return null (no grouping)
+      if (Array.isArray(data) && data.length > 0 && ((_a = data[0]) === null || _a === void 0 ? void 0 : _a.isGroup)) {
+        return data;
+      }
+      // If not grouped, return null to show flat data (no grouping)
+      return null;
+    }
+    // Otherwise, do client-side grouping
     if (!filteredData || filteredData.length === 0) {
       return null;
     }
@@ -3084,13 +3410,13 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     }
     var result = groupData(filteredData, 0, "");
     return result;
-  }, [filteredData, groupedColumns, columns]);
+  }, [filteredData, groupedColumns, columns, isServerSide, data]);
   var flattenedRows = React.useMemo(function () {
     var flatList = [];
     if (!filteredData || filteredData.length === 0) {
       return flatList;
     }
-    if (groupedData) {
+    if (groupedData && groupedData.length > 0) {
       // Handle grouped data
       var walkGroups_1 = function (groups, indentLevel, parentIndex) {
         if (indentLevel === void 0) {
@@ -3099,7 +3425,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         if (parentIndex === void 0) {
           parentIndex = 0;
         }
-        groups.forEach(function (group, groupIndex) {
+        groups === null || groups === void 0 ? void 0 : groups.forEach(function (group, groupIndex) {
           var _a;
           // Add group header with aggregations
           flatList.push({
@@ -3198,11 +3524,20 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   // 10) Rendering: Flattened Virtual Rows
   // ----------------------------
   // Which columns do we show? (Ignore rowGroup columns except the first if needed)
+  // This guarantees that all grouped columns (in the order of groupedColumns) are
+  // always at the start of your visible columns.
   var displayColumns = React.useMemo(function () {
-    return columns.filter(function (col) {
-      return col.visible !== false;
-    });
-  }, [columns]);
+    // Grouped columns first, then the rest, but hide columns with aggSourceField
+    var grouped = columns.filter(function (col) {
+      return groupedColumns.includes(col.field) && col.visible !== false && !col.aggSourceField;
+    } // hide if aggSourceField is set
+    );
+    var nonGrouped = columns.filter(function (col) {
+      return !groupedColumns.includes(col.field) && col.visible !== false && !col.aggSourceField;
+    } // hide if aggSourceField is set
+    );
+    return tslib.__spreadArray(tslib.__spreadArray([], grouped, true), nonGrouped, true);
+  }, [columns, groupedColumns]);
   // Add a helper function to get cell value
   var getCellValue = function (row, field, col) {
     // If the row has aggregations and this is an aggregated column, use the aggregation value
@@ -3219,6 +3554,13 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         value: value,
         data: row
       });
+    }
+    if (col.editorType === "date" && value) {
+      // Format as YYYY-MM-DD or your preferred format
+      var date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString(); // or use date-fns/format for custom format
+      }
     }
     return value ? String(value) : "";
   };
@@ -3451,7 +3793,11 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
           asChild: true
         }, /*#__PURE__*/React.createElement("span", null, col.rowGroup ? "" : formatCellValue(cellValue, row_2 || {}, col))), /*#__PURE__*/React.createElement(TooltipContent, {
           className: ""
-        }, col.tooltipField && (row_2 === null || row_2 === void 0 ? void 0 : row_2[col.tooltipField]) ? String(row_2[col.tooltipField]) : col.rowGroup ? "" : formatCellValue(cellValue, row_2 || {}, col)))) : formatCellValue(cellValue, row_2 || {}, col))));
+        }, function () {
+          var tooltipValue = row_2 === null || row_2 === void 0 ? void 0 : row_2[col.tooltipField];
+          var result = col.tooltipField && tooltipValue != null && tooltipValue !== "" ? tooltipValue : col.rowGroup ? "" : formatCellValue(cellValue, row_2 || {}, col);
+          return result != null ? String(result) : ""; // Ensure it's a valid string or ReactNode
+        }()))) : formatCellValue(cellValue, row_2 || {}, col))));
       }));
     }
     // 3) Detail Row
@@ -3623,12 +3969,51 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       rowSelection === null || rowSelection === void 0 ? void 0 : rowSelection.getSelectedRows(selectedData);
     }
   }, [selectedRows]);
-  var _5 = React.useState(""),
-    search = _5[0],
-    setSearch = _5[1];
-  var _6 = React.useState(false),
-    sidebarOpen = _6[0],
-    setSidebarOpen = _6[1];
+  var _6 = React.useState(""),
+    search = _6[0],
+    setSearch = _6[1];
+  var _7 = React.useState(false),
+    sidebarOpen = _7[0],
+    setSidebarOpen = _7[1];
+  // Add this above your return statement
+  var aggregationStats = React.useMemo(function () {
+    if (!isServerSide) return;
+    if (!columns || !columns.length || !gridData.length) return {};
+    var stats = {};
+    columns.forEach(function (col) {
+      if (!col.aggFunc) return;
+      // Only use aggSourceField if it's a string, otherwise use col.field
+      var sourceField = typeof col.aggSourceField === "string" && col.aggSourceField ? col.aggSourceField : col.field;
+      var values = gridData.map(function (row) {
+        return Number(row[sourceField]);
+      }).filter(function (v) {
+        return !isNaN(v);
+      });
+      var aggValue = 0;
+      switch (col.aggFunc) {
+        case "sum":
+          aggValue = values.reduce(function (acc, val) {
+            return acc + val;
+          }, 0);
+          break;
+        case "avg":
+          aggValue = values.length ? values.reduce(function (acc, val) {
+            return acc + val;
+          }, 0) / values.length : 0;
+          break;
+        case "min":
+          aggValue = values.length ? Math.min.apply(Math, values) : 0;
+          break;
+        case "max":
+          aggValue = values.length ? Math.max.apply(Math, values) : 0;
+          break;
+        default:
+          aggValue = 0;
+      }
+      stats[col.field] = aggValue;
+    });
+    return stats;
+  }, [columns, gridData, isServerSide]);
   // Update the main grid container JSX
   return /*#__PURE__*/React.createElement("div", {
     className: "relative w-[100%] h-full"
@@ -3642,7 +4027,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   }), /*#__PURE__*/React.createElement("p", {
     className: "mt-4 text-gray-600"
   }, loadingMessage)))), gridData.length > 0 && grandTotalRow === "top" && renderTotalRow(), /*#__PURE__*/React.createElement("div", {
-    className: "flex h-full max-h-[100vh]"
+    className: "flex h-[100%] max-h-[80vh] overflow-y-scroll"
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       overflow: "auto",
@@ -3663,11 +4048,11 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     className: "w-[50px]"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-[30px] flex justify-center items-center"
-  }, /*#__PURE__*/React.createElement(Checkbox, {
+  }, rowSelection.mode === "multiple" && (/*#__PURE__*/React.createElement(Checkbox, {
     checked: Object.keys(selectedRows).length > 0 && Object.keys(selectedRows).length === gridData.length,
     onCheckedChange: handleHeaderCheckboxChange,
     className: "border-1 border-gray-400 cursor-pointer"
-  })))), displayColumns.map(function (col) {
+  }))))), displayColumns.map(function (col) {
     var isDragged = draggedColumn === col.field;
     var isDragOver = dragOverColumn === col.field;
     return /*#__PURE__*/React.createElement(TableHead, {
@@ -3755,155 +4140,21 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   }, /*#__PURE__*/React.createElement(TableCell, {
     colSpan: displayColumns.length,
     className: "h-24 text-center"
-  }, "No results found")))))), showGroupByPanel && flattenedRows.length !== 0 && (/*#__PURE__*/React.createElement("div", {
+  }, "No results found")))))), showGroupByPanel && (/*#__PURE__*/React.createElement("div", {
     style: {
       width: "auto",
       display: "flex"
     }
-  }, sidebarOpen && (/*#__PURE__*/React.createElement("aside", {
-    style: {
-      backgroundColor: "#1f2937",
-      // bg-gray-900
-      color: "#ffffff",
-      // text-white
-      padding: "1rem",
-      // p-4
-      borderLeft: "1px solid #374151",
-      // border-l border-gray-700
-      width: "280px",
-      // w-[280px]
-      display: "flex",
-      // flex
-      flexDirection: "column",
-      // flex-col
-      height: "480px",
-      overflowY: "auto",
-      // overflow-y-auto
-      overflowX: "hidden" // overflow-x-hidden
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: "0.75rem 1rem",
-      // px-4 py-3
-      borderBottom: "1px solid #353945"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "center",
-      gap: "0.5rem",
-      marginBottom: "0.75rem"
-    }
-  }, /*#__PURE__*/React.createElement(Checkbox, {
-    style: {
-      borderWidth: 1,
-      borderColor: "#9ca3af",
-      // border-gray-400
-      cursor: "pointer"
-    },
-    checked: columns.every(function (col) {
-      return col.visible !== false;
-    }),
-    onCheckedChange: function (checked) {
-      return setColumns(function (cols) {
-        return cols.map(function (c) {
-          return tslib.__assign(tslib.__assign({}, c), {
-            visible: checked
-          });
-        });
-      });
-    },
-    className: undefined
-  }), /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    placeholder: "Search...",
-    value: search,
-    onChange: function (e) {
-      return setSearch(e.target.value);
-    },
-    style: {
-      backgroundColor: "#232733",
-      border: "1px solid #353945",
-      borderRadius: "0.25rem",
-      padding: "0.25rem 0.5rem",
-      color: "#ffffff",
-      width: "100%",
-      outline: "none"
-    }
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      flexDirection: "column",
-      gap: "0.5rem",
-      maxHeight: "10rem",
-      // max-h-40 = 160px
-      overflowY: "auto"
-    }
-  }, columns.filter(function (col) {
-    return col.headerName.toLowerCase().includes(search.toLowerCase());
-  }).map(function (col, idx) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: col.field,
-      style: {
-        display: "flex",
-        alignItems: "center",
-        gap: "0.5rem"
-      }
-    }, /*#__PURE__*/React.createElement(Checkbox, {
-      checked: col.visible !== false,
-      onCheckedChange: function (checked) {
-        return setColumns(function (cols) {
-          return cols.map(function (c, i) {
-            return i === idx ? tslib.__assign(tslib.__assign({}, c), {
-              visible: checked
-            }) : c;
-          });
-        });
-      },
-      style: {
-        borderWidth: 1,
-        borderColor: "#9ca3af",
-        cursor: "pointer"
-      },
-      className: undefined
-    }), /*#__PURE__*/React.createElement(lucideReact.GripVertical, {
-      style: {
-        width: "1rem",
-        height: "1rem",
-        color: "#9ca3af",
-        cursor: "move"
-      }
-    }), /*#__PURE__*/React.createElement("span", null, col.headerName));
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: "0.75rem 1rem",
-      // px-4 py-3
-      borderBottom: "1px solid #353945",
-      flexShrink: 0
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: "0.5rem",
-      display: "flex",
-      alignItems: "center",
-      gap: "0.5rem"
-    }
-  }, /*#__PURE__*/React.createElement(lucideReact.List, {
-    style: {
-      width: "1rem",
-      height: "1rem"
-    }
-  }), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontWeight: 600
-    }
-  }, "Row Groups")), /*#__PURE__*/React.createElement(GroupPanel, {
+  }, sidebarOpen && (/*#__PURE__*/React.createElement(ColumnSidebar, {
+    columns: columns,
+    setColumns: setColumns,
+    search: search,
+    setSearch: setSearch,
     showGroupByPanel: showGroupByPanel,
     groupedColumns: groupedColumns,
-    columns: columns,
     setColumnGrouped: setColumnGrouped,
     handleGroupDrop: handleGroupDrop
-  })))), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       height: "100%",
       background: "#404c58"
@@ -3929,7 +4180,25 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     className: "w-4 h-4"
   }), "Columns"))))), /*#__PURE__*/React.createElement("div", {
     className: "sticky bottom-0 bg-white"
-  }, gridData.length > 0 && grandTotalRow === "bottom" && renderTotalRow()));
+  }, gridData.length > 0 && grandTotalRow === "bottom" && renderTotalRow()), isServerSide && pagination && (data === null || data === void 0 ? void 0 : data.length) && (/*#__PURE__*/React.createElement(ServerPagination, {
+    data: data,
+    paginationProps: pagination
+  })), isServerSide && aggregationStats && Object.keys(aggregationStats).length > 0 && (/*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("h2", {
+    className: "my-2 italic"
+  }, "Aggregation Stats:"), /*#__PURE__*/React.createElement("ul", {
+    className: "flex gap-4 items-center flex-wrap mb-2"
+  }, columns.filter(function (col) {
+    return !!col.aggFunc;
+  }).map(function (col) {
+    var _a;
+    return /*#__PURE__*/React.createElement("li", {
+      key: col.field
+    }, col.headerName, ":", " ", /*#__PURE__*/React.createElement("span", {
+      className: "font-bold"
+    }, (_a = aggregationStats[col.field]) === null || _a === void 0 ? void 0 : _a.toLocaleString(undefined, {
+      maximumFractionDigits: 2
+    })));
+  })))));
 });
 DataGrid.displayName = "DataGrid";
 

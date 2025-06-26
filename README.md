@@ -1,285 +1,201 @@
-# Grid Tool
+# CIS Grid Tool
 
-A powerful React component library with advanced grid functionality, featuring virtualization, grouping, filtering, and master-detail views.
+A powerful and flexible data grid component for React applications with support for sorting, filtering, pagination, grouping, and more.
 
 ## Features
 
-- 🚀 Built with TanStack Table for powerful table functionality
-- 📊 Virtualized scrolling for handling large datasets
-- 🎨 Built-in Tailwind CSS styling with customizable theme
-- 📱 Responsive design
-- 🔍 Sortable columns
-- ⚡ High performance with virtualization
-- **Grouping**: Group data by one or more columns
-- **Filtering**: Filter data by column values
-- **Master-Detail**: Expand rows to show detailed information
-- **Aggregation**: Calculate totals and other aggregations for grouped data
-- **Customizable**: Extensive options for customizing appearance and behavior
-- **Editable Cells**: Support for various editor types
-- **Tooltips**: Custom tooltips for cells and headers
-- **Custom Cell Rendering**: Support for custom cell renderers
-- **Row Selection**: Single and multiple row selection modes
-- **Undo/Redo**: Built-in undo/redo functionality for data changes
-- **Column Reordering**: Drag and drop column reordering
-- **Column Visibility**: Toggle column visibility with a sidebar panel
+- Client-side and server-side data handling
+- Column customization
+- Sorting and filtering
+- Pagination
+- Row grouping and aggregation
+- Master-detail views
+- Row selection
+- Custom cell rendering
+- Tooltips
+- Loading states
 
 ## Installation
 
 ```bash
-npm install grid-tool
+npm install @cis/grid-tool
 # or
-yarn add grid-tool
-# or
-pnpm add grid-tool
-```
-
-### Tailwind CSS Integration
-
-This package comes with built-in Tailwind CSS styling. The styles are prefixed with `grid-tool-` to avoid conflicts with your project's styles. You don't need to install Tailwind CSS separately.
-
-If you want to customize the theme, you can extend the default configuration in your project's `tailwind.config.js`:
-
-```js
-module.exports = {
-  // ... your other config
-  theme: {
-    extend: {
-      // Extend the grid-tool theme
-      colors: {
-        // Add your custom colors
-      },
-      spacing: {
-        // Add your custom spacing
-      },
-    },
-  },
-}
+yarn add @cis/grid-tool
 ```
 
 ## Usage
 
 ```tsx
-import { DataGrid } from 'grid-tool';
+import { DataGrid } from '@cis/grid-tool';
 
-const MyComponent = () => {
-  const data = [
-    { id: 1, name: 'John', age: 30, department: 'Engineering', joinDate: '2023-01-15', active: true },
-    { id: 2, name: 'Jane', age: 25, department: 'Marketing', joinDate: '2023-02-20', active: true },
-    // ... more data
-  ];
-
+const MyGrid = () => {
   const columnDefs = {
     columns: [
-      { 
-        field: 'id', 
-        headerName: 'ID', 
-        type: 'number',
-        editable: false,
-        width: 80
-      },
-      { 
-        field: 'name', 
-        headerName: 'Name', 
+      {
+        field: 'name',
+        headerName: 'Name',
         type: 'text',
-        editable: true,
-        showFilter: true
+        editable: true
       },
-      { 
-        field: 'age', 
-        headerName: 'Age', 
-        type: 'number',
-        editable: true,
-        valueFormatter: ({ value }) => `${value} years`
-      },
-      { 
-        field: 'department', 
-        headerName: 'Department', 
-        type: 'select',
-        editorType: 'select',
-        editorParams: {
-          options: ['Engineering', 'Marketing', 'Sales', 'HR']
-        }
-      },
-      {
-        field: 'joinDate',
-        headerName: 'Join Date',
-        type: 'date',
-        editorType: 'date',
-        valueFormatter: ({ value }) => new Date(value).toLocaleDateString()
-      },
-      {
-        field: 'active',
-        headerName: 'Active',
-        type: 'boolean',
-        editorType: 'checkbox'
-      }
-    ],
-    masterDetail: true,
-    showGroupByPanel: true,
-    grandTotalRow: 'bottom'
-  };
-
-  const handleDataChange = (newRecord, previousRecord, field) => {
-    console.log('Data changed:', { newRecord, previousRecord, field });
+      // ... more columns
+    ]
   };
 
   return (
     <DataGrid
-      data={data}
+      data={myData}
       columnDefs={columnDefs}
-      onDataChange={handleDataChange}
-      loading={false}
-      loadingMessage="Loading data..."
-      showGroupByPanel={true}
-      rowSelection={{
-        mode: 'multiple',
-        getSelectedRows: (selectedRows) => {
-          console.log('Selected rows:', selectedRows);
-        }
+      rowModelType="clientSide"
+      pagination={{
+        paginationInfo: {
+          page: 1,
+          pageSize: 10,
+          totalCount: 100,
+          totalPages: 10
+        },
+        paginationPageSize: 10,
+        paginationPageSizeSelector: [10, 20, 50],
+        onPageChange: (page) => console.log('Page changed:', page),
+        onPageSizeChange: (pageSize) => console.log('Page size changed:', pageSize)
       }}
     />
   );
 };
 ```
 
-## API Reference
+## Configuration
 
-### DataGrid Props
+### Column Definition
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `data` | `Record<string, unknown>[]` | `[]` | The data to display in the grid |
-| `columnDefs` | `ColumnDefProps` | Required | Configuration for columns and grid behavior |
-| `onDataChange` | `(newRecord: Record<string, unknown>, previousRecord: Record<string, unknown>, field: string) => void` | - | Callback when data changes |
-| `loading` | `boolean` | `false` | Whether the grid is in a loading state |
-| `loadingMessage` | `string` | `"Loading..."` | Message to display during loading |
-| `onRowClick` | `(params: { data: Record<string, unknown>, rowIndex: number }) => void` | - | Callback when a row is clicked |
-| `showGroupByPanel` | `boolean` | `false` | Show grouping panel |
-| `isChild` | `boolean` | `false` | Whether this is a child grid (for master-detail) |
-| `rowSelection` | `{ mode: 'single' \| 'multiple', getSelectedRows: (rows: Record<string, unknown>[]) => void }` | - | Row selection configuration |
+Columns can be configured with the following properties:
 
-### ColumnDefProps
-
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `columns` | `ColumnDef[]` | Required | Array of column definitions |
-| `masterDetail` | `boolean` | `false` | Enable master-detail view |
-| `detailGridOptions` | `ColumnDefProps` | - | Options for detail grid |
-| `getDetailRowData` | `(params: { data: Record<string, unknown>, successCallback: (data: Record<string, unknown>[]) => void }) => void` | - | Function to fetch detail data |
-| `aggFuncs` | `Record<string, (params: { values: unknown[] }) => unknown>` | `{}` | Custom aggregation functions |
-| `grandTotalRow` | `"top" \| "bottom" \| "none"` | `"none"` | Position of grand total row |
-| `tableLayout` | `"fixed" \| "auto"` | `"fixed"` | Table layout mode |
-
-### ColumnDef
-
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `field` | `string` | Required | Field name in data |
-| `headerName` | `string` | Required | Display name for column header |
-| `type` | `"text" \| "number" \| "date" \| "boolean" \| "select" \| "time" \| "dateTime"` | - | Data type for formatting |
-| `editable` | `boolean` | `true` | Whether column is editable |
-| `width` | `number` | - | Column width in pixels |
-| `visible` | `boolean` | `true` | Whether column is visible |
-| `rowGroup` | `boolean` | `false` | Enable row grouping by this column |
-| `aggFunc` | `string` | - | Aggregation function for grouped rows |
-| `valueGetter` | `(params: { data: Record<string, unknown>, node?: unknown }) => unknown` | - | Custom value getter |
-| `tooltipValueGetter` | `(params: Record<string, unknown>) => string` | - | Custom tooltip value getter |
-| `valueSetter` | `(params: { value: string }) => Record<string, unknown>` | - | Custom value setter |
-| `valueFormatter` | `(params: { value: unknown, data: Record<string, unknown>, node?: unknown }) => string` | - | Custom value formatter |
-| `showFilter` | `boolean` | `true` | Whether to show filter for this column |
-| `editorType` | `"text" \| "number" \| "date" \| "checkbox" \| "select" \| "time" \| "dateTime"` | - | Type of editor for editable cells |
-| `editorParams` | `Record<string, unknown>` | - | Parameters for the editor |
-| `valueParser` | `(params: { value: string }) => unknown` | - | Custom value parser |
-| `headerTooltip` | `string` | - | Tooltip for column header |
-| `tooltipField` | `string` | - | Field to use for cell tooltip |
-| `cellRenderer` | `React.FC<any>` | - | Custom cell renderer component |
-
-### GroupObject
-
-| Prop | Type | Description |
-|------|------|-------------|
-| `field` | `string` | Field name used for grouping |
-| `value` | `unknown` | Value of the group |
-| `key` | `string` | Unique key for the group |
-| `level` | `number` | Nesting level of the group |
-| `children` | `Record<string, unknown>[]` | Child records in the group |
-| `isGroup` | `boolean` | Whether this is a group object |
-| `originalChildren` | `Record<string, unknown>[]` | Original child records before any transformations |
-| `aggregations` | `Record<string, unknown>` | Aggregated values for the group |
-
-## Advanced Features
-
-### Row Selection
-
-The grid supports both single and multiple row selection modes:
-
-```tsx
-<DataGrid
-  // ... other props
-  rowSelection={{
-    mode: 'multiple', // or 'single'
-    getSelectedRows: (selectedRows) => {
-      console.log('Selected rows:', selectedRows);
-    }
-  }}
-/>
+```typescript
+interface ColumnDef {
+  field: string;              // Field name in the data
+  headerName: string;         // Column header text
+  type?: 'text' | 'number' | 'date' | 'boolean' | 'select' | 'time' | 'dateTime';
+  editable?: boolean;         // Whether the cell is editable
+  width?: number;             // Column width
+  visible?: boolean;          // Column visibility
+  rowGroup?: boolean;         // Enable row grouping
+  aggFunc?: string;           // Aggregation function
+  showFilter?: boolean;       // Show filter for this column
+  editorType?: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'time' | 'dateTime';
+  editorParams?: Record<string, unknown>;  // Parameters for the editor
+  headerTooltip?: string;     // Tooltip for the header
+  tooltipField?: string;      // Field to use for cell tooltip
+  cellRenderer?: unknown;     // Custom cell renderer
+}
 ```
 
-### Master-Detail View
+### Grid Properties
 
-Enable master-detail view to show detailed information for each row:
+The grid component accepts the following props:
 
-```tsx
-const columnDefs = {
-  columns: [...],
-  masterDetail: true,
-  getDetailRowData: ({ data, successCallback }) => {
-    // Fetch detail data
-    fetchDetailData(data.id).then(detailData => {
-      successCallback(detailData);
-    });
-  },
-  detailGridOptions: {
-    // Options for the detail grid
-    columns: [...]
-  }
-};
+```typescript
+interface DataGridProps {
+  // Data and Column Configuration
+  data?: Record<string, unknown>[];
+  columnDefs: ColumnDefProps;
+  rowModelType?: 'clientSide' | 'serverSide';
+  
+  // Sorting
+  sortModel?: SortModelType;
+  onSortChange?: (sortModel: SortModelType) => void;
+  
+  // Filtering
+  onFilterChange?: (filterModel: IFilterModel) => void;
+  
+  // Pagination
+  pagination?: IPagination;
+  
+  // Row Selection
+  rowSelection?: {
+    mode: 'single' | 'multiple';
+    getSelectedRows?: (data: Record<string, unknown>[]) => void;
+  };
+  
+  // Master-Detail
+  masterDetail?: boolean;
+  detailGridOptions?: ColumnDefProps;
+  getDetailRowData?: (params: {
+    data: Record<string, unknown>;
+    successCallback: (data: Record<string, unknown>[]) => void;
+  }) => void;
+  
+  // Grouping and Aggregation
+  aggFuncs?: {
+    [key: string]: (params: { values: unknown[] }) => unknown;
+  };
+  grandTotalRow?: 'top' | 'bottom' | 'none';
+  showGroupByPanel?: boolean;
+  onRowGroup?: (groupItem: string[]) => void;
+  
+  // Events
+  onDataChange?: (
+    newRecord: Record<string, unknown>,
+    previousRecord: Record<string, unknown>,
+    field: string
+  ) => void;
+  onRowClick?: (params: {
+    data: Record<string, unknown>;
+    rowIndex: number;
+  }) => void;
+  
+  // Loading State
+  loading?: boolean;
+  loadingMessage?: string;
+}
 ```
 
-### Column Grouping
+### Pagination
 
-Enable column grouping with the group panel:
+Configure pagination with the following options:
 
-```tsx
-<DataGrid
-  // ... other props
-  showGroupByPanel={true}
-  columnDefs={{
-    columns: [
-      {
-        field: 'department',
-        headerName: 'Department',
-        rowGroup: true,
-        aggFunc: 'count'
-      },
-      // ... other columns
-    ]
-  }}
-/>
+```typescript
+interface IPagination {
+  paginationInfo: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+  };
+  paginationPageSize: number;
+  paginationPageSizeSelector: number[];
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}
 ```
 
-## Dependencies
+### Filtering
 
-This package uses the following major dependencies:
+Filters can be configured with:
 
-- @tanstack/react-table
-- @tanstack/react-virtual
-- react-window
-- tailwindcss
-- tailwindcss-animate
-- lodash
-- lucide-react
+```typescript
+interface IFilterModel {
+  [field: string]: {
+    filterType: string;  // 'text', 'number', etc.
+    type: string;       // 'contains', 'equals', etc.
+    filter: string | number | boolean | Date;
+  };
+}
+```
+
+### Sorting
+
+Sort configuration:
+
+```typescript
+interface ISortModelItem {
+  colName: string;
+  sort: 'asc' | 'desc';
+}
+```
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-MIT © [ahmad-tech](https://github.com/ahmad-tech)
+[MIT](LICENSE)

@@ -24,12 +24,15 @@ import {
   ChevronRight,
   ListFilter,
   Calendar,
-  GripVertical,
   // Sigma,
-  List,
   // X,
 } from "lucide-react";
-import type { DataGridProps, ColumnDef, GroupObject } from "@/types/grid";
+import type {
+  DataGridProps,
+  ColumnDef,
+  GroupObject,
+  IFilterModelItem,
+} from "@/types/grid";
 import { PulseLoader } from "react-spinners";
 import { debounce } from "lodash";
 import CellEditor from "./CellEditor";
@@ -48,7 +51,8 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { CellFilter, GetDefaultFilterType } from "./CellFilter";
-import { GroupPanel } from "./GroupPanel";
+import ServerPagination from "./ServerPagination";
+import ColumnSidebar from "./ColumnSidebar";
 
 export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
   (
@@ -62,9 +66,23 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       showGroupByPanel = false,
       isChild = false,
       rowSelection,
+
+      // props for pagination
+      pagination,
+
+      // prop for filtering
+      onFilterChange,
+
+      rowModelType = "clientSide", // default to client-side row model
+
+      onSortChange, // for sorting
+      sortModel,
+      onRowGroup,
     }: DataGridProps,
     ref: React.Ref<HTMLDivElement>
   ) => {
+    const isServerSide = rowModelType === "serverSide";
+
     const { getCookedData } = useCookedData(columnDefs);
     const {
       columns: propColumns = [],
@@ -95,6 +113,13 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>(
       {}
     );
+
+    // for server-side row grouping
+    useEffect(() => {
+      if (isServerSide && onRowGroup) {
+        onRowGroup(groupedColumns);
+      }
+    }, [groupedColumns]);
 
     // Column drag & drop
     const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
@@ -197,15 +222,19 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [undo, redo]);
 
-    useImperativeHandle<HTMLDivElement, HTMLDivElement>(ref, () => {
-      const div = document.createElement("div");
-      Object.assign(div, {
-        resetSelection: () => {
-          setSelectedRows({});
-        },
-      });
-      return div;
-    }, []);
+    useImperativeHandle<HTMLDivElement, HTMLDivElement>(
+      ref,
+      () => {
+        const div = document.createElement("div");
+        Object.assign(div, {
+          resetSelection: () => {
+            setSelectedRows({});
+          },
+        });
+        return div;
+      },
+      []
+    );
 
     // Initial Setup
     useEffect(() => {
@@ -224,23 +253,22 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           .filter((key) => key !== "children")
           .map(
             (key) =>
-              ({
-                field: key,
-                headerName:
-                  key.charAt(0).toUpperCase() +
-                  key.slice(1).replace(/([A-Z])/g, " $1"),
-                type: typeof firstItem[key] === "number" ? "number" : "text",
-                editable: true,
-                width: 150,
-                visible: true,
-                rowGroup: false,
-                aggFunc: typeof firstItem[key] === "number" ? "sum" : undefined,
-              }) as ColumnDef
+            ({
+              field: key,
+              headerName:
+                key.charAt(0).toUpperCase() +
+                key.slice(1).replace(/([A-Z])/g, " $1"),
+              type: typeof firstItem[key] === "number" ? "number" : "text",
+              editable: true,
+              width: 150,
+              visible: true,
+              rowGroup: false,
+              aggFunc: typeof firstItem[key] === "number" ? "sum" : undefined,
+            } as ColumnDef)
           );
 
         setColumns(extracted);
       }
-
       if (propColumns && propColumns.length > 0) {
         // Separate grouped and non-grouped columns
         const groupedCols = propColumns.filter(
@@ -270,8 +298,30 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         setFilters(newFilters);
         debouncedSetFilters(newFilters);
       },
+
       [filters, debouncedSetFilters]
     );
+
+    // for filtering on server side
+    useEffect(() => {
+      if (isServerSide && onFilterChange && filters) {
+        // Build AG Grid-style filterModel
+        const filterModel: Record<string, IFilterModelItem> = {};
+
+        Object.entries(filters).forEach(([field, value]) => {
+          if (value !== undefined && value !== "") {
+            const col = columns.find((c) => c.field === field);
+            filterModel[field] = {
+              filterType: col?.type || "text",
+              type: filterTypes[field] || "contains",
+              filter: value,
+            };
+          }
+        });
+
+        onFilterChange(filterModel);
+      }
+    }, [filters]);
 
     // Cleanup debounce on unmount
     useEffect(() => {
@@ -291,6 +341,11 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
     // Update filteredData to use filter types
     const filteredData = useMemo(() => {
+      // If server-side filtering is enabled, just return all gridData (parent will handle filtering)
+      if (isServerSide) {
+        return gridData;
+      }
+
       if (!gridData || gridData.length === 0) {
         return [];
       }
@@ -376,10 +431,41 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     // ----------------------------
     const handleSort = useCallback(
       (field: string) => {
+        if (isServerSide && onSortChange) {
+          // Get current sort direction for this field from sortModel prop
+          const currentSort = (typeof sortModel !== "undefined"
+            ? sortModel.find((s) => s.colName === field)
+            : undefined) || { sort: undefined };
+
+          let direction: "asc" | "desc" | undefined;
+          if (!currentSort.sort) {
+            direction = "asc";
+          } else if (currentSort.sort === "asc") {
+            direction = "desc";
+          } else if (currentSort.sort === "desc") {
+            direction = "asc"; // Remove sort
+          }
+
+          // Remove this column from previous sorts
+          const filtered =
+            typeof sortModel !== "undefined"
+              ? sortModel.filter((s) => s.colName !== field)
+              : [];
+
+          // If direction is undefined, just remove the sort for this column
+          const newSortModel = direction
+            ? [{ colName: field, sort: direction }]
+            : filtered;
+
+          onSortChange(newSortModel);
+          return;
+        }
+
         let direction: "asc" | "desc" = "asc";
         if (sortConfig.key === field && sortConfig.direction === "asc") {
           direction = "desc";
         }
+
         setSortConfig({ key: field, direction });
 
         // Sort the data
@@ -392,6 +478,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         });
         setGridData(sorted);
       },
+
       [sortConfig, gridData]
     );
 
@@ -616,6 +703,22 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
     const setColumnGrouped = useCallback(
       (field: string, grouped: boolean) => {
+        // If server-side grouping is enabled, notify parent and skip client grouping
+        if (isServerSide && onRowGroup) {
+          // Build the new groupedColumns array
+          setGroupedColumns((prev) => {
+            let newGrouped;
+            if (grouped) {
+              newGrouped = prev.includes(field) ? prev : [...prev, field];
+            } else {
+              newGrouped = prev.filter((f) => f !== field);
+            }
+            // Notify parent to fetch grouped data from server
+            onRowGroup(newGrouped);
+            return newGrouped;
+          });
+          return; // Do not do client-side grouping
+        }
         // Update columns
         const newColumns = columns.map((col) => {
           if (col.field === field) {
@@ -627,6 +730,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         // If grouping is enabled, move the grouped column to the start
         if (grouped) {
           const groupedColumn = newColumns.find((col) => col.field === field);
+
           if (groupedColumn) {
             const filteredColumns = newColumns.filter(
               (col) => col.field !== field
@@ -649,7 +753,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           }
         });
       },
-      [columns]
+      [columns, isServerSide, onRowGroup]
     );
 
     // ----------------------------
@@ -691,6 +795,17 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     );
 
     const groupedData = useMemo(() => {
+      // If server-side grouping is enabled, always use the data as provided by the parent
+      if (isServerSide && onRowGroup) {
+        // Only use data if it's grouped (has isGroup), otherwise return null (no grouping)
+        if (Array.isArray(data) && data.length > 0 && data[0]?.isGroup) {
+          return data as GroupObject[];
+        }
+        // If not grouped, return null to show flat data (no grouping)
+        return null;
+      }
+
+      // Otherwise, do client-side grouping
       if (!filteredData || filteredData.length === 0) {
         return null;
       }
@@ -764,7 +879,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
       const result = groupData(filteredData, 0, "");
       return result;
-    }, [filteredData, groupedColumns, columns]);
+    }, [filteredData, groupedColumns, columns, isServerSide, data]);
 
     const flattenedRows = useMemo(() => {
       const flatList: Array<{
@@ -786,14 +901,14 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         return flatList;
       }
 
-      if (groupedData) {
+      if (groupedData && groupedData.length > 0) {
         // Handle grouped data
         const walkGroups = (
           groups: GroupObject[],
           indentLevel = 0,
           parentIndex = 0
         ) => {
-          groups.forEach((group, groupIndex) => {
+          groups?.forEach((group, groupIndex) => {
             // Add group header with aggregations
             flatList.push({
               type: "group",
@@ -900,10 +1015,27 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     // ----------------------------
     // 10) Rendering: Flattened Virtual Rows
     // ----------------------------
+
     // Which columns do we show? (Ignore rowGroup columns except the first if needed)
+
+    // This guarantees that all grouped columns (in the order of groupedColumns) are
+    // always at the start of your visible columns.
     const displayColumns = useMemo(() => {
-      return columns.filter((col) => col.visible !== false);
-    }, [columns]);
+      // Grouped columns first, then the rest, but hide columns with aggSourceField
+      const grouped = columns.filter(
+        (col) =>
+          groupedColumns.includes(col.field) &&
+          col.visible !== false &&
+          !col.aggSourceField // hide if aggSourceField is set
+      );
+      const nonGrouped = columns.filter(
+        (col) =>
+          !groupedColumns.includes(col.field) &&
+          col.visible !== false &&
+          !col.aggSourceField // hide if aggSourceField is set
+      );
+      return [...grouped, ...nonGrouped];
+    }, [columns, groupedColumns]);
 
     // Add a helper function to get cell value
     const getCellValue = (
@@ -932,6 +1064,13 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     ) => {
       if (col.valueFormatter) {
         return col.valueFormatter({ value, data: row });
+      }
+      if (col.editorType === "date" && value) {
+        // Format as YYYY-MM-DD or your preferred format
+        const date = new Date(value as string);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString(); // or use date-fns/format for custom format
+        }
       }
       return value ? String(value) : "";
     };
@@ -1250,11 +1389,17 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                             </span>
                           </TooltipTrigger>
                           <TooltipContent className="">
-                            {col.tooltipField && row?.[col.tooltipField]
-                              ? String(row[col.tooltipField])
-                              : col.rowGroup
-                                ? ""
-                                : formatCellValue(cellValue, row || {}, col)}
+                            {(() => {
+                              const tooltipValue = row?.[col.tooltipField];
+                              const result =
+                                col.tooltipField && tooltipValue != null && tooltipValue !== ""
+                                  ? tooltipValue
+                                  : col.rowGroup
+                                    ? ""
+                                    : formatCellValue(cellValue, row || {}, col);
+
+                              return result != null ? String(result) : ""; // Ensure it's a valid string or ReactNode
+                            })()}
                           </TooltipContent>
                         </Tooltip>
                       ) : (
@@ -1390,14 +1535,12 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
     const renderTotalRow = () => (
       <div
-        className={`bg-gray-100  ${
-          grandTotalRow === "bottom" ? "sticky bottom-0" : "sticky top-0"
-        }`}
+        className={`bg-gray-100  ${grandTotalRow === "bottom" ? "sticky bottom-0" : "sticky top-0"
+          }`}
       >
         <Table
-          className={`${
-            tableLayout === "fixed" ? "table-fixed" : "table-auto"
-          } border-b border-gray-200`}
+          className={`${tableLayout === "fixed" ? "table-fixed" : "table-auto"
+            } border-b border-gray-200`}
         >
           <TableBody>
             <TableRow>
@@ -1486,6 +1629,48 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     const [search, setSearch] = useState("");
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
+    // Add this above your return statement
+    const aggregationStats = useMemo(() => {
+      if (!isServerSide) return;
+
+      if (!columns || !columns.length || !gridData.length) return {};
+      const stats: Record<string, number> = {};
+
+      columns.forEach((col) => {
+        if (!col.aggFunc) return;
+        // Only use aggSourceField if it's a string, otherwise use col.field
+        const sourceField =
+          typeof col.aggSourceField === "string" && col.aggSourceField
+            ? col.aggSourceField
+            : col.field;
+        const values = gridData
+          .map((row) => Number(row[sourceField]))
+          .filter((v) => !isNaN(v));
+        let aggValue = 0;
+        switch (col.aggFunc) {
+          case "sum":
+            aggValue = values.reduce((acc, val) => acc + val, 0);
+            break;
+          case "avg":
+            aggValue = values.length
+              ? values.reduce((acc, val) => acc + val, 0) / values.length
+              : 0;
+            break;
+          case "min":
+            aggValue = values.length ? Math.min(...values) : 0;
+            break;
+          case "max":
+            aggValue = values.length ? Math.max(...values) : 0;
+            break;
+          default:
+            aggValue = 0;
+        }
+        stats[col.field] = aggValue;
+      });
+
+      return stats;
+    }, [columns, gridData, isServerSide]);
+
     // Update the main grid container JSX
     return (
       <div className="relative w-[100%] h-full">
@@ -1501,7 +1686,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
         {/* Grand Total Row (Top) */}
         {gridData.length > 0 && grandTotalRow === "top" && renderTotalRow()}
-        <div className="flex h-full max-h-[100vh]">
+        <div className="flex h-[100%] max-h-[80vh] overflow-y-scroll">
           {/* Scrollable container for the virtualized rows */}
           <div
             style={{
@@ -1524,14 +1709,20 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                   {rowSelection && (
                     <TableHead className="w-[50px]">
                       <div className="w-[30px] flex justify-center items-center">
-                        <Checkbox
-                          checked={
-                            Object.keys(selectedRows).length > 0 &&
-                            Object.keys(selectedRows).length === gridData.length
-                          }
-                          onCheckedChange={handleHeaderCheckboxChange}
-                          className={"border-1 border-gray-400 cursor-pointer"}
-                        />
+                        {rowSelection.mode === "multiple" && (
+                          <Checkbox
+                            checked={
+                              Object.keys(selectedRows).length > 0 &&
+                              Object.keys(selectedRows).length ===
+                              gridData.length
+                            }
+
+                            onCheckedChange={handleHeaderCheckboxChange}
+                            className={
+                              "border-1 border-gray-400 cursor-pointer"
+                            }
+                          />
+                        )}
                       </div>
                     </TableHead>
                   )}
@@ -1605,11 +1796,10 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                                       data-column={col.field}
                                     >
                                       <ListFilter
-                                        className={`h-4 w-4 ${
-                                          filters[col.field]
+                                        className={`h-4 w-4 ${filters[col.field]
                                             ? "text-blue-500"
                                             : "text-gray-500"
-                                        }`}
+                                          }`}
                                       />
                                     </div>
                                   </PopoverTrigger>
@@ -1672,151 +1862,21 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 display: "flex",
               }}
             >
-              {/* Right Sidebar (inside table view) */}
+              {/* Right Sidebar (inside table view) Search, Columns List and grouping */}
+
               {sidebarOpen && (
-                <aside
-                  style={{
-                    backgroundColor: "#1f2937", // bg-gray-900
-                    color: "#ffffff", // text-white
-                    padding: "1rem", // p-4
-                    borderLeft: "1px solid #374151", // border-l border-gray-700
-                    width: "280px", // w-[280px]
-                    display: "flex", // flex
-                    flexDirection: "column", // flex-col
-                    height: "480px",
-                    overflowY: "auto", // overflow-y-auto
-                    overflowX: "hidden", // overflow-x-hidden
-                  }}
-                >
-                  {/* Search and Columns List */}
-                  <div
-                    style={{
-                      padding: "0.75rem 1rem", // px-4 py-3
-                      borderBottom: "1px solid #353945",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        marginBottom: "0.75rem",
-                      }}
-                    >
-                      <Checkbox
-                        style={{
-                          borderWidth: 1,
-                          borderColor: "#9ca3af", // border-gray-400
-                          cursor: "pointer",
-                        }}
-                        checked={columns.every((col) => col.visible !== false)}
-                        onCheckedChange={(checked: boolean) =>
-                          setColumns((cols) =>
-                            cols.map((c) => ({ ...c, visible: checked }))
-                          )
-                        }
-                        className={undefined}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        style={{
-                          backgroundColor: "#232733",
-                          border: "1px solid #353945",
-                          borderRadius: "0.25rem",
-                          padding: "0.25rem 0.5rem",
-                          color: "#ffffff",
-                          width: "100%",
-                          outline: "none",
-                        }}
-                      />
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "0.5rem",
-                        maxHeight: "10rem", // max-h-40 = 160px
-                        overflowY: "auto",
-                      }}
-                    >
-                      {columns
-                        .filter((col) =>
-                          col.headerName
-                            .toLowerCase()
-                            .includes(search.toLowerCase())
-                        )
-                        .map((col, idx) => (
-                          <div
-                            key={col.field}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.5rem",
-                            }}
-                          >
-                            <Checkbox
-                              checked={col.visible !== false}
-                              onCheckedChange={(checked: boolean) =>
-                                setColumns((cols) =>
-                                  cols.map((c, i) =>
-                                    i === idx ? { ...c, visible: checked } : c
-                                  )
-                                )
-                              }
-                              style={{
-                                borderWidth: 1,
-                                borderColor: "#9ca3af",
-                                cursor: "pointer",
-                              }}
-                              className={undefined}
-                            />
-                            <GripVertical
-                              style={{
-                                width: "1rem",
-                                height: "1rem",
-                                color: "#9ca3af",
-                                cursor: "move",
-                              }}
-                            />
-                            <span>{col.headerName}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-
-                  {/* Row Groups Section */}
-                  <div
-                    style={{
-                      padding: "0.75rem 1rem", // px-4 py-3
-                      borderBottom: "1px solid #353945",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <div
-                      style={{
-                        marginBottom: "0.5rem",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                      }}
-                    >
-                      <List style={{ width: "1rem", height: "1rem" }} />
-                      <span style={{ fontWeight: 600 }}>Row Groups</span>
-                    </div>
-                    <GroupPanel
-                      showGroupByPanel={showGroupByPanel}
-                      groupedColumns={groupedColumns}
-                      columns={columns}
-                      setColumnGrouped={setColumnGrouped}
-                      handleGroupDrop={handleGroupDrop}
-                    />
-                  </div>
-                </aside>
+                <ColumnSidebar
+                  columns={columns}
+                  setColumns={setColumns}
+                  search={search}
+                  setSearch={setSearch}
+                  showGroupByPanel={showGroupByPanel}
+                  groupedColumns={groupedColumns}
+                  setColumnGrouped={setColumnGrouped}
+                  handleGroupDrop={handleGroupDrop}
+                />
               )}
+
               {/* Sidebar Toggle Button (when closed) */}
               <div style={{ height: "100%", background: "#404c58" }}>
                 <button
@@ -1844,12 +1904,45 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             </div>
           )}
         </div>
+
         <div className="sticky bottom-0 bg-white">
           {/* Grand Total Row (Bottom) */}
           {gridData.length > 0 &&
             grandTotalRow === "bottom" &&
             renderTotalRow()}
         </div>
+
+        {/* For server side pagination */}
+        {isServerSide && pagination && data?.length && (
+          <ServerPagination data={data} paginationProps={pagination} />
+        )}
+
+        {/* For server side aggregation stats */}
+        {isServerSide &&
+          aggregationStats &&
+          Object.keys(aggregationStats).length > 0 && (
+            <>
+              <h2 className="my-2 italic">Aggregation Stats:</h2>
+
+              <ul className="flex gap-4 items-center flex-wrap mb-2">
+                {columns
+                  .filter((col) => !!col.aggFunc)
+                  .map((col) => (
+                    <li key={col.field}>
+                      {col.headerName}:{" "}
+                      <span className="font-bold">
+                        {aggregationStats[col.field]?.toLocaleString(
+                          undefined,
+                          {
+                            maximumFractionDigits: 2,
+                          }
+                        )}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </>
+          )}
       </div>
     );
   }

@@ -51,13 +51,53 @@ export interface ColumnDef {
   headerTooltip?: string;
   tooltipField?: string;
   cellRenderer?: unknown;
+  aggSourceField?: string | unknown;
+  aggSourceFields?: [string, string] | any;
 }
 export interface RowSelection {
   mode: "single" | "multiple";
   getSelectedRows?: (data: Record<string, unknown>[]) => void;
 }
 
+// for filtering
+export interface IFilterModelItem {
+  filterType: string; // datatype -  e.g. 'text', 'number', etc.
+  type: string; // e.g. 'contains', 'equals', etc.
+  filter: string | number | boolean | Date; // value to filter by
+}
+
+export interface IFilterModel {
+  [field: string]: IFilterModelItem;
+}
+
+type RowModelType = "clientSide" | "serverSide";
+
+// for sorting
+export interface ISortModelItem {
+  colName: string;
+  sort: "asc" | "desc";
+}
+
+export interface IPaginationProps {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface IPagination {
+  paginationInfo: IPaginationProps;
+  paginationPageSize: number; // number of rows per page
+  paginationPageSizeSelector: number[]; // allows the user to select the page size from a predefined list of page sizes
+  onPageChange: (page: number) => void; // callback when the page changes
+  onPageSizeChange: (pageSize: number) => void; // callback when the page size changes
+}
+export type SortModelType = ISortModelItem[];
+
 export interface DataGridProps {
+  sortModel?: SortModelType; // sorting model, default is 'asc'
+  rowModelType?: RowModelType; // type of row model, default is 'clientSide'
+
   isChild?: boolean;
   data?: Record<string, unknown>[];
   columnDefs: ColumnDefProps;
@@ -84,6 +124,18 @@ export interface DataGridProps {
     rowIndex: number;
   }) => void;
   rowSelection?: RowSelection;
+
+  // for sorting
+  onSortChange?: (sortModel: SortModelType) => void;
+
+  // for filtering
+  onFilterChange?: (filterModel: IFilterModel) => void;
+
+  // props for pagination
+  pagination?: IPagination;
+
+  // for row grouping
+  onRowGroup?: (groupItem: string[]) => void;
 }
 
 export interface ColumnDefProps {

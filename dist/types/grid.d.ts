@@ -40,12 +40,43 @@ export interface ColumnDef {
     headerTooltip?: string;
     tooltipField?: string;
     cellRenderer?: unknown;
+    aggSourceField?: string | unknown;
+    aggSourceFields?: [string, string] | any;
 }
 export interface RowSelection {
     mode: "single" | "multiple";
     getSelectedRows?: (data: Record<string, unknown>[]) => void;
 }
+export interface IFilterModelItem {
+    filterType: string;
+    type: string;
+    filter: string | number | boolean | Date;
+}
+export interface IFilterModel {
+    [field: string]: IFilterModelItem;
+}
+type RowModelType = "clientSide" | "serverSide";
+export interface ISortModelItem {
+    colName: string;
+    sort: "asc" | "desc";
+}
+export interface IPaginationProps {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+}
+export interface IPagination {
+    paginationInfo: IPaginationProps;
+    paginationPageSize: number;
+    paginationPageSizeSelector: number[];
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (pageSize: number) => void;
+}
+export type SortModelType = ISortModelItem[];
 export interface DataGridProps {
+    sortModel?: SortModelType;
+    rowModelType?: RowModelType;
     isChild?: boolean;
     data?: Record<string, unknown>[];
     columnDefs: ColumnDefProps;
@@ -70,6 +101,10 @@ export interface DataGridProps {
         rowIndex: number;
     }) => void;
     rowSelection?: RowSelection;
+    onSortChange?: (sortModel: SortModelType) => void;
+    onFilterChange?: (filterModel: IFilterModel) => void;
+    pagination?: IPagination;
+    onRowGroup?: (groupItem: string[]) => void;
 }
 export interface ColumnDefProps {
     tableLayout?: "fixed" | "auto";
@@ -87,4 +122,5 @@ export interface ColumnDefProps {
     };
     grandTotalRow?: "top" | "bottom" | "none";
 }
+export {};
 //# sourceMappingURL=grid.d.ts.map

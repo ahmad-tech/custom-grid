@@ -133,10 +133,10 @@ export const CellFilter = ({
         {IsDateType(column.type)
           ? "Date"
           : IsTimeType(column.type)
-            ? "Time"
-            : IsDateTimeType(column.type)
-              ? "DateTime"
-              : "Search"}
+          ? "Time"
+          : IsDateTimeType(column.type)
+          ? "DateTime"
+          : "Search"}
       </label>
 
       {IsDateType(column.type) ? (

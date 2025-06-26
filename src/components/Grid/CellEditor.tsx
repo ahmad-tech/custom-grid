@@ -61,13 +61,16 @@ const TextEditor = ({
 }: TextEditorProps) => {
   return (
     <Input
+      type="text"
       value={value as string}
       autoFocus={true}
-      onChange={(e) => onChange(e.target.value as string | null)}
+      onChange={(e: { target: { value: string | null } }) =>
+        onChange(e.target.value as string | null)
+      }
       onBlur={onBlur}
       onKeyDown={onKeyDown}
       placeholder={placeholder as string}
-      className="h-8 py-1 px-2 text-sm"
+      className="h-8 text-sm"
     />
   );
 };
@@ -107,7 +110,7 @@ const NumberEditor = ({
       type="number"
       inputMode="decimal"
       value={value !== null ? String(value) : ""}
-      onChange={(e) => {
+      onChange={(e: { target: { value: string } }) => {
         const val = e.target.value;
         if (val === "" || /^\d*\.?\d*$/.test(val)) {
           const numVal = val === "" ? null : Number(val);
@@ -115,7 +118,7 @@ const NumberEditor = ({
         }
       }}
       onBlur={onBlur}
-      onKeyDown={(e) => {
+      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
         handleKeyDown(e);
         if (onKeyDown) onKeyDown(e);
       }}
@@ -123,7 +126,7 @@ const NumberEditor = ({
       max={max as number}
       step={step as number}
       placeholder={placeholder as string}
-      className="h-8 py-1 px-2 text-sm"
+      className="h-8 text-sm"
     />
   );
 };
@@ -226,7 +229,6 @@ const DateEditor = ({ value, onChange, hideTime = true }: DateEditorProps) => {
 
 const TimeEditor = ({ value, onChange }: TimeEditorProps) => {
   const timeNow = new Date(value as string);
-  console.log(timeNow);
   // Helper to convert "HH:mm" string to Date object (today's date)
   // const parseTimeStringToDate = (timeStr: string | null): Date => {
   //   if (!timeStr) return new Date();
@@ -251,9 +253,7 @@ const TimeEditor = ({ value, onChange }: TimeEditorProps) => {
   //   typeof value === "string" ? parseTimeStringToDate(value) : new Date()
   // );
 
-  const handleTimeChange = (date: Date) => {
-    console.log(date);
-  };
+  const handleTimeChange = () => {};
 
   return (
     <SimpleTimePicker
@@ -361,7 +361,11 @@ const CellEditor = ({
   const additionalProps = editorType === "dateTime" ? { hideTime: false } : {};
 
   return Editor ? (
-    <div className="w-full h-full flex items-center justify-center">
+    <div
+      className={`w-full ${
+        editorType === "text" || editorType === "number" ? "px-2" : ""
+      } h-full flex items-center justify-center`}
+    >
       <Editor {...editorProps} {...additionalProps} />
     </div>
   ) : (
