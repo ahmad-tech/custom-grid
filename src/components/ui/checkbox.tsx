@@ -4,10 +4,10 @@ import { CheckIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-// Define props using Radix primitive typing
-type CheckboxProps = React.ComponentPropsWithoutRef<
-  typeof CheckboxPrimitive.Root
->;
+interface CheckboxProps
+  extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root> {
+  className?: string;
+}
 
 function Checkbox({ className, ...props }: CheckboxProps) {
   return (

@@ -85,7 +85,7 @@ const NumberEditor = ({
   step,
   placeholder,
 }: NumberEditorProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -293,7 +293,13 @@ interface EditorParamsType {
   step?: number;
 }
 
-type EditorType = "text" | "number" | "select" | "date" | "time" | "dateTime";
+export type EditorType =
+  | "text"
+  | "number"
+  | "select"
+  | "date"
+  | "time"
+  | "dateTime";
 
 type EditorValueType = {
   text: string;

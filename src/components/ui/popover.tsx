@@ -3,30 +3,21 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 import { cn } from "@/lib/utils";
 
-// Extend types from Radix primitives for strong typing
-type PopoverProps = React.ComponentPropsWithoutRef<
-  typeof PopoverPrimitive.Root
->;
-type PopoverTriggerProps = React.ComponentPropsWithoutRef<
-  typeof PopoverPrimitive.Trigger
->;
-type PopoverContentProps = React.ComponentPropsWithoutRef<
-  typeof PopoverPrimitive.Content
-> & {
-  className?: string;
-  align?: "start" | "center" | "end";
-  sideOffset?: number;
-};
-type PopoverAnchorProps = React.ComponentPropsWithoutRef<
-  typeof PopoverPrimitive.Anchor
->;
-
-function Popover(props: PopoverProps) {
+// Popover Root
+function Popover(props: PopoverPrimitive.PopoverProps) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
 
-function PopoverTrigger(props: PopoverTriggerProps) {
+// Popover Trigger
+function PopoverTrigger(props: PopoverPrimitive.PopoverTriggerProps) {
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
+}
+
+// Popover Content
+interface PopoverContentProps extends PopoverPrimitive.PopoverContentProps {
+  className?: string;
+  align?: PopoverPrimitive.PopoverContentProps["align"];
+  sideOffset?: number;
 }
 
 function PopoverContent({
@@ -42,7 +33,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 origin-[--radix-popover-content-transform-origin] rounded-md border p-4 shadow-md outline-hidden",
+          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-md border p-4 shadow-md outline-hidden",
           className
         )}
         {...props}
@@ -51,7 +42,8 @@ function PopoverContent({
   );
 }
 
-function PopoverAnchor(props: PopoverAnchorProps) {
+// Popover Anchor
+function PopoverAnchor(props: PopoverPrimitive.PopoverAnchorProps) {
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
 }
 

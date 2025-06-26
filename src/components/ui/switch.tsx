@@ -4,9 +4,11 @@ import * as SwitchPrimitive from "@radix-ui/react-switch";
 import { cn } from "@/lib/utils";
 
 interface SwitchProps
-  extends React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root> {}
+  extends React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root> {
+  className?: string;
+}
 
-const Switch: React.FC<SwitchProps> = ({ className, ...props }) => {
+function Switch({ className, ...props }: SwitchProps) {
   return (
     <SwitchPrimitive.Root
       data-slot="switch"
@@ -24,6 +26,6 @@ const Switch: React.FC<SwitchProps> = ({ className, ...props }) => {
       />
     </SwitchPrimitive.Root>
   );
-};
+}
 
 export { Switch };

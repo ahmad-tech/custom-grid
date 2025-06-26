@@ -10,7 +10,8 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { ColumnDef } from "@/types/grid";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
+import React from "react";
 
 // Export utility functions
 export const IsDateType = (type?: string) => type === "date";
@@ -133,10 +134,10 @@ export const CellFilter = ({
         {IsDateType(column.type)
           ? "Date"
           : IsTimeType(column.type)
-          ? "Time"
-          : IsDateTimeType(column.type)
-          ? "DateTime"
-          : "Search"}
+            ? "Time"
+            : IsDateTimeType(column.type)
+              ? "DateTime"
+              : "Search"}
       </label>
 
       {IsDateType(column.type) ? (

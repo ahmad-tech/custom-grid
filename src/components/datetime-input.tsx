@@ -106,7 +106,7 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
       () => formatProp || "dd/MM/yyyy-hh:mm aa",
       [formatProp]
     );
-    const inputRef = useRef<HTMLInputElement>(undefined);
+    const inputRef = useRef<HTMLInputElement | null>(null);
 
     const [segments, setSegments] = useState<Segment[]>([]);
     const [selectedSegmentAt, setSelectedSegmentAt] = useState<
@@ -165,7 +165,6 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
         value || new TZDate(new Date(), timezone)
       );
       const year = getYear(date);
-      // console.log('inputValue', {allHasValue, validSegments, inputStr, formatStr, date, year});
       if (isValid(date) && year > 1900 && year < 2100) {
         return date;
       }
@@ -173,7 +172,6 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
     useEffect(() => {
       if (!inputValue) return;
       if (value?.getTime() !== inputValue.getTime()) {
-        // console.log('inputValueChanged', {formatStr, inputStr, value, inputValue, });
         options.onChange?.(inputValue);
       }
     }, [inputValue]);
@@ -201,7 +199,7 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
           !segment &&
             (segment = validSegments.find((s) => s.index >= selectionStart));
           setCurrentSegment(segment);
-          setSelection(inputRef, segment);
+          setSelection({ current: inputRef.current }, segment);
         }
       },
       [segments]
@@ -217,9 +215,9 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
                 .reverse()
                 .find((s) => s.index < curSegment.index)
             : validSegments.find((s) => s.index > curSegment.index);
-        if (segment) {
+        if (segment && inputRef.current) {
           setCurrentSegment(segment);
-          setSelection(inputRef, segment);
+          setSelection({ current: inputRef.current }, segment);
         }
       },
       [segments, curSegment]
@@ -270,7 +268,10 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
             }
           }
         }
-        shouldNext ? onSegmentChange("right") : setSelection(inputRef, segment);
+        shouldNext
+          ? onSegmentChange("right")
+          : inputRef.current &&
+            setSelection({ current: inputRef.current }, segment);
       },
       [segments, curSegment]
     );
@@ -295,7 +296,8 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
           setSegments(updatedSegments);
           segment = updatedSegments.find((s) => s.index === segment.index)!;
         }
-        setSelection(inputRef, segment);
+        if (inputRef.current)
+          setSelection({ current: inputRef.current }, segment);
       },
       [segments, curSegment]
     );
@@ -310,7 +312,8 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
         const segment = updatedSegments.find(
           (s) => s.index === curSegment.index
         )!;
-        setSelection(inputRef, segment);
+        if (inputRef.current)
+          setSelection({ current: inputRef.current }, segment);
       } else {
         onSegmentChange("left");
       }
@@ -319,7 +322,8 @@ const DateTimeInput = React.forwardRef<HTMLInputElement, DateTimeInputProps>(
     const onKeyDown = useEventCallback(
       (event: React.KeyboardEvent<HTMLInputElement>) => {
         const key = event.key;
-        setSelection(inputRef, curSegment);
+        if (inputRef.current)
+          setSelection({ current: inputRef.current }, curSegment);
         if (inputValue) {
           onKeyDownCustom?.(event);
         }

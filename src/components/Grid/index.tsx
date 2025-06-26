@@ -32,10 +32,11 @@ import type {
   ColumnDef,
   GroupObject,
   IFilterModelItem,
+  ColumnDefProps,
 } from "@/types/grid";
 import { PulseLoader } from "react-spinners";
 import { debounce } from "lodash";
-import CellEditor from "./CellEditor";
+import CellEditor, { EditorType } from "./CellEditor";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { useCookedData } from "./useCookedData";
@@ -53,6 +54,12 @@ import {
 import { CellFilter, GetDefaultFilterType } from "./CellFilter";
 import ServerPagination from "./ServerPagination";
 import ColumnSidebar from "./ColumnSidebar";
+import { PivotPanel } from "./PivotPanel";
+import {
+  IGroupedPivotedData,
+  IPivotColumnDef,
+  pivotAndAggregateByGroup,
+} from "@/lib/pivot.utils";
 
 export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
   (
@@ -78,10 +85,215 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       onSortChange, // for sorting
       sortModel,
       onRowGroup,
+      pivotMode = false,
+      serverPivoting,
+      addRowConfig,
+      editType,
+      onCellValueChanged,
+      onRowValueChanged,
+      fullRowButtons,
     }: DataGridProps,
     ref: React.Ref<HTMLDivElement>
   ) => {
+    // for full row editing
+
+    const [editingRowId, setEditingRowId] = useState<unknown | null>(null);
+    const [editingRowData, setEditingRowData] = useState<Record<
+      string,
+      unknown
+    > | null>(null);
+
+    // Tracks whether the user is currently editing/adding a new row
+    const [isAddingRow, setIsAddingRow] = useState<boolean>(false);
+
+    // Holds the data being entered for the new row
+    const [newRowData, setNewRowData] = useState<Record<string, unknown>>({});
+
+    const generateInitialRowData = (): Record<string, unknown> => {
+      const initial: Record<string, unknown> = {};
+
+      columns?.forEach((col) => {
+        if (!(col.field in initial)) {
+          initial[col.field] = ""; // or default for col.type
+        }
+      });
+
+      return initial;
+    };
+
+    // get server-pivoting props
+
+    const {
+      serverPivotedData,
+      serverPivotDataColumns,
+      serverPivotCols,
+      setServerPivotColsFn,
+      setServerGroupedCols: setServerGroupedColsFn,
+      setServerAggColsFn,
+      serverAggCols,
+    } = serverPivoting || {};
+
     const isServerSide = rowModelType === "serverSide";
+
+    const [enablePivot, setEnablePivot] = useState<boolean>(pivotMode);
+
+    const defaultPivotColumns = useMemo(
+      () =>
+        columnDefs.columns
+          ?.filter((item) => item.pivot)
+          .map((item) => item.field) || [],
+      [columnDefs]
+    );
+
+    // To apply pivot on like game, year etc
+    const [pivotColumns, setPivotColumns] =
+      useState<string[]>(defaultPivotColumns);
+
+    const [_columnDefs, _setColumnDefs] = useState<ColumnDefProps>(columnDefs);
+
+    // sort data on pivoting mode
+    const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(
+      null
+    );
+
+    const toggleSortByTotalMedals = () => {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    };
+
+    const [columnAggFnMap, setColumnAggFnMap] = useState<
+      Record<string, string>
+    >({});
+
+    const aggCols = useMemo(() => {
+      if (!enablePivot) return;
+
+      return columnDefs?.columns
+        ?.filter(
+          (col) =>
+            typeof data?.[0]?.[col.field] === "number" &&
+            col.pivot !== true &&
+            col.field !== "year" // exclude year column as you wanted
+        )
+        ?.map((col) => ({
+          field: col.field,
+          aggFunc: columnAggFnMap[col.field] || "sum", // fallback to sum if not set
+        }));
+    }, [columnDefs, data, columnAggFnMap]);
+
+    // eg field, aggFunc - silver, sum
+    const [_aggCols, _setAggCols] = useState<IPivotColumnDef[]>(
+      serverAggCols ? serverAggCols : aggCols || []
+    );
+
+    // 🧠 Automatically filter when columnDefs or _aggCols change
+
+    const [selectedAggFn, setSelectedAggFn] = useState<string>("sum");
+
+    // drag and drop of the column while applying agg
+    const handleAggDrop = (e: React.DragEvent) => {
+      if (!enablePivot) return;
+
+      const field = e.dataTransfer.getData("text/plain");
+      if (!field) return;
+
+      setColumnAggFnMap((prev) => ({
+        ...prev,
+        [field]: selectedAggFn || "sum",
+      }));
+    };
+
+    const groupByField = useMemo(() => {
+      return columnDefs?.columns?.find((col) => col.rowGroup)?.field;
+    }, [columnDefs]);
+
+    // set the grouped column via setter function
+    useEffect(() => {
+      if (setServerGroupedColsFn && groupByField) {
+        setServerGroupedColsFn(groupByField);
+      }
+    }, [groupByField, setServerGroupedColsFn]);
+
+    // on removing the the column from the ColumnSide bar
+    useEffect(() => {
+      if (!enablePivot) return;
+
+      const fromMap = Object.entries(columnAggFnMap).map(
+        ([field, aggFunc]) => ({
+          field,
+          aggFunc,
+        })
+      );
+
+      if (fromMap.length > 0) {
+        setServerAggColsFn ? setServerAggColsFn(fromMap) : _setAggCols(fromMap);
+      } else if (aggCols && _aggCols.length === 0 && aggCols.length > 0) {
+        setServerAggColsFn
+          ? setServerAggColsFn(aggCols || [])
+          : _setAggCols(aggCols || []);
+      }
+    }, [columnAggFnMap, enablePivot, aggCols, setServerAggColsFn]);
+
+    const groupedPivotedData: IGroupedPivotedData[] = useMemo(() => {
+      if (!enablePivot || !pivotMode) return [];
+
+      if (groupByField && _aggCols) {
+        const grouped: IGroupedPivotedData[] =
+          serverPivoting && serverPivotedData
+            ? (serverPivotedData as unknown as IGroupedPivotedData[])
+            : (pivotAndAggregateByGroup(
+                data,
+                groupByField,
+                pivotColumns,
+                serverAggCols ? serverAggCols : _aggCols
+              ) ?? []);
+
+        if (sortDirection && grouped.length > 0) {
+          return [...grouped].sort((a, b) =>
+            sortDirection === "asc"
+              ? (a.totalMedals ?? 0) - (b.totalMedals ?? 0)
+              : (b.totalMedals ?? 0) - (a.totalMedals ?? 0)
+          );
+        }
+
+        return grouped;
+      }
+
+      return [];
+    }, [
+      data,
+      groupByField,
+      pivotColumns,
+      _aggCols,
+      sortDirection,
+      serverAggCols,
+      enablePivot,
+      serverPivoting,
+      serverPivotedData,
+    ]);
+
+    function getPivotDataColumns(data: any[], pivotColumns: string[]) {
+      if (!enablePivot) return;
+
+      if (serverPivotDataColumns) {
+        return serverPivotDataColumns;
+      }
+
+      return pivotColumns.map((key) => {
+        const values = Array.from(new Set(data.map((row) => row[key])));
+        return { [key]: values };
+      });
+    }
+
+    // get all the unique values for the pivot columns
+    const pivotDataColumns = useMemo(() => {
+      return serverPivoting && serverPivotCols
+        ? getPivotDataColumns(data, serverPivotCols)
+        : getPivotDataColumns(data, pivotColumns);
+    }, [data, serverPivotCols, pivotColumns, serverPivoting]);
+
+    const togglePivot = useCallback(() => {
+      setEnablePivot((prev) => !prev);
+    }, []);
 
     const { getCookedData } = useCookedData(columnDefs);
     const {
@@ -114,12 +326,42 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       {}
     );
 
+    const handlePivotDrop = useCallback(
+      (e: React.DragEvent) => {
+        e.preventDefault();
+
+        if (!enablePivot) return;
+
+        const field = e.dataTransfer.getData("columnField");
+
+        // Find the column from the full column list
+        const col = columns.find((c) => c.field === field);
+
+        // If pivot is not allowed on this column, exit early
+        // if (!col || !col.pivot) return;
+
+        if (field && !pivotColumns.includes(field)) {
+          setPivotColumns((prev) => [...prev, field]);
+        }
+        if (
+          serverPivotCols &&
+          field &&
+          !serverPivotCols.includes(field) &&
+          serverPivoting &&
+          setServerPivotColsFn
+        ) {
+          setServerPivotColsFn((prev) => [...prev, field]);
+        }
+      },
+      [pivotColumns, serverPivotCols]
+    );
+
     // for server-side row grouping
     useEffect(() => {
       if (isServerSide && onRowGroup) {
         onRowGroup(groupedColumns);
       }
-    }, [groupedColumns]);
+    }, [groupedColumns, isServerSide, onRowGroup]);
 
     // Column drag & drop
     const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
@@ -222,19 +464,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [undo, redo]);
 
-    useImperativeHandle<HTMLDivElement, HTMLDivElement>(
-      ref,
-      () => {
-        const div = document.createElement("div");
-        Object.assign(div, {
-          resetSelection: () => {
-            setSelectedRows({});
-          },
-        });
-        return div;
-      },
-      []
-    );
+    useImperativeHandle<HTMLDivElement, HTMLDivElement>(ref, () => {
+      const div = document.createElement("div");
+      Object.assign(div, {
+        resetSelection: () => {
+          setSelectedRows({});
+        },
+      });
+      return div;
+    }, []);
 
     // Initial Setup
     useEffect(() => {
@@ -253,18 +491,18 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           .filter((key) => key !== "children")
           .map(
             (key) =>
-            ({
-              field: key,
-              headerName:
-                key.charAt(0).toUpperCase() +
-                key.slice(1).replace(/([A-Z])/g, " $1"),
-              type: typeof firstItem[key] === "number" ? "number" : "text",
-              editable: true,
-              width: 150,
-              visible: true,
-              rowGroup: false,
-              aggFunc: typeof firstItem[key] === "number" ? "sum" : undefined,
-            } as ColumnDef)
+              ({
+                field: key,
+                headerName:
+                  key.charAt(0).toUpperCase() +
+                  key.slice(1).replace(/([A-Z])/g, " $1"),
+                type: typeof firstItem[key] === "number" ? "number" : "text",
+                editable: true,
+                width: 150,
+                visible: true,
+                rowGroup: false,
+                aggFunc: typeof firstItem[key] === "number" ? "sum" : undefined,
+              }) as ColumnDef
           );
 
         setColumns(extracted);
@@ -573,10 +811,18 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     // ----------------------------
     const startEditing = useCallback(
       (rowIndex: number, field: string, value: string) => {
-        setEditingCell({ rowIndex, field });
-        setEditValue(value);
+        if (editType === "fullRow") {
+          setEditingRowId(rowIndex);
+          setEditingRowData((prev) => ({
+            ...prev,
+            [field]: value,
+          }));
+        } else {
+          setEditingCell({ rowIndex, field });
+          setEditValue(value);
+        }
       },
-      []
+      [editType]
     );
 
     const handleEditChange = useCallback(
@@ -897,6 +1143,12 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         parentIndex?: number;
       }> = [];
 
+      const dataToRender = filteredData;
+
+      if (!dataToRender || dataToRender.length === 0) {
+        return flatList;
+      }
+
       if (!filteredData || filteredData.length === 0) {
         return flatList;
       }
@@ -960,7 +1212,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         walkGroups(groupedData, 0, 0);
       } else {
         // Handle flat data
-        filteredData.forEach((row, index) => {
+        dataToRender.forEach((row, index) => {
           flatList.push({
             type: "data",
             row,
@@ -979,7 +1231,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       }
 
       return flatList;
-    }, [filteredData, groupedData, expandedGroups, expandedRows, masterDetail]);
+    }, [
+      filteredData,
+      groupedData,
+      expandedGroups,
+      expandedRows,
+      masterDetail,
+      enablePivot,
+      pivotColumns,
+    ]);
 
     // Or modify it to only expand on initial load if you want that behavior
     useEffect(() => {
@@ -1035,7 +1295,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           !col.aggSourceField // hide if aggSourceField is set
       );
       return [...grouped, ...nonGrouped];
-    }, [columns, groupedColumns]);
+    }, [columns, groupedColumns, enablePivot, pivotColumns, enablePivot]);
 
     // Add a helper function to get cell value
     const getCellValue = (
@@ -1081,6 +1341,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
      */
     const renderRow = (virtualRow: VirtualItem) => {
       const item = flattenedRows[virtualRow.index];
+
       if (!item) {
         return null;
       }
@@ -1145,7 +1406,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                         </p>
                       </div>
                     </div>
-                  ) : col.aggFunc &&
+                  ) : "aggFunc" in col &&
+                    col.aggFunc &&
                     item.aggregations &&
                     item.aggregations[col.field] !== undefined ? (
                     <div className="w-full">
@@ -1183,6 +1445,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         const isExpanded =
           rowIndex !== undefined ? expandedRows[rowIndex] : false;
         let expandButton: React.ReactNode = null;
+
         if (
           row?.children &&
           Array.isArray(row.children) &&
@@ -1203,6 +1466,14 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             </button>
           );
         }
+
+        // Full row editing logic
+        const isFullRowEditing =
+          editType === "fullRow" &&
+          typeof onRowValueChanged === "function" &&
+          typeof onCellValueChanged === "function" &&
+          editingRowId === rowIndex;
+
         return (
           <TableRow
             key={virtualRow.key}
@@ -1247,10 +1518,64 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             )}
 
             {displayColumns.map((col, colIndex) => {
-              const cellRenderer = col.cellRenderer;
+              if (isFullRowEditing && col.editable) {
+                return (
+                  <TableCell key={col.field}>
+                    <CellEditor
+                      value={
+                        (editingRowData?.[col.field] ?? row?.[col.field]) as
+                          | string
+                          | number
+                          | boolean
+                          | Date
+                          | null
+                      }
+                      columnDef={{
+                        ...col,
+                        editorType: (col.editorType || "text") as EditorType,
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const updatedRow = { ...row, ...editingRowData };
+                          onRowValueChanged?.({ data: updatedRow });
+                          setEditingRowData({});
+                          setEditingRowId(null);
+                        }
+
+                        if (e.key === "Escape") {
+                          handleStopEditing();
+                        }
+                      }}
+                      onChange={(value) => {
+                        if (!col || !col.field) return;
+
+                        setEditingRowData((prev) => ({
+                          ...prev,
+                          [col.field]: value,
+                        }));
+                        onCellValueChanged({
+                          value: value,
+                          field: col.field,
+
+                          data: {
+                            ...row,
+                            ...editingRowData,
+                            [col.field]: value,
+                          },
+                        });
+                      }}
+                    />
+                  </TableCell>
+                );
+              }
+
+              const cellRenderer =
+                "cellRenderer" in col ? col.cellRenderer : undefined;
+
               const cellValue = row
                 ? getCellValue(row, col.field, col)
                 : undefined;
+
               const isEditing =
                 editingCell &&
                 editingCell.rowIndex === rowIndex &&
@@ -1279,6 +1604,57 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 );
               }
 
+              const editorType =
+                "editorType" in col ? col.editorType : undefined;
+
+              // Option 2: Custom render for country column
+              if (
+                "rowGroup" in col &&
+                col.rowGroup &&
+                enablePivot &&
+                pivotColumns.length > 0
+              ) {
+                // Calculate total medals for this row (sum all number fields except the grouped field)
+                const totalMedals = Object.keys(row || {})
+                  .filter(
+                    (k) =>
+                      k !== col.field &&
+                      typeof row?.[k] === "number" &&
+                      !isNaN(row?.[k] as number)
+                  )
+                  .reduce((acc, k) => acc + (Number(row?.[k]) || 0), 0);
+
+                return (
+                  <TableCell
+                    key={col.field}
+                    style={{
+                      ...getCellWidth(col),
+                      overflow: "hidden",
+                      cursor: col.editable ? "pointer" : "text",
+                      textWrap: "wrap",
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                    }}
+                    className={cn(isEditing ? "p-[0px]" : "")}
+                    onDoubleClick={() => {
+                      if (
+                        !cellRenderer &&
+                        col.editable &&
+                        rowIndex !== undefined &&
+                        editorType !== "checkbox" &&
+                        (!("rowGroup" in col) || !col.rowGroup)
+                      ) {
+                        startEditing(rowIndex, col.field, String(cellValue));
+                      }
+                    }}
+                  >
+                    <div>
+                      {String(row?.[col.field])} ({totalMedals})
+                    </div>
+                  </TableCell>
+                );
+              }
+
               return (
                 <TableCell
                   key={col.field}
@@ -1296,8 +1672,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                       !cellRenderer &&
                       col.editable &&
                       rowIndex !== undefined &&
-                      col.editorType !== "checkbox" &&
-                      !col.rowGroup
+                      editorType !== "checkbox" &&
+                      (!("rowGroup" in col) || !col.rowGroup)
                     ) {
                       startEditing(rowIndex, col.field, String(cellValue));
                     }
@@ -1316,29 +1692,34 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                         rowIndex: rowIndex,
                       }
                     )
-                  ) : isEditing && col.editorType !== "checkbox" ? (
+                  ) : isEditing && editorType !== "checkbox" ? (
                     <CellEditor
                       value={editValue}
                       columnDef={{
-                        editorType: col.editorType || "text",
-                        editorParams: col.editorParams,
+                        editorType: editorType || "text",
+                        // editorParams: col.editorParams,
+                        editorParams:
+                          "editorParams" in col ? col.editorParams : undefined,
                       }}
-                      onChange={(value) =>
-                        handleEditChange(value, col.editorType)
-                      }
+                      onChange={(value) => handleEditChange(value, editorType)}
                       onBlur={() => {
                         // Commit changes
                         if (
                           !editingCell &&
-                          col.editorType !== "select" &&
-                          col.editorType !== "date" &&
-                          col.editorType !== "checkbox"
+                          editorType !== "select" &&
+                          editorType !== "date" &&
+                          (editorType as ColumnDef["editorType"]) !== "checkbox"
                         )
                           return;
                         const { field } = editingCell;
-                        const updatedData = col.valueSetter
-                          ? col.valueSetter({ value: editValue })
-                          : { [field]: editValue };
+                        // const updatedData = col.valueSetter
+                        //   ? col.valueSetter({ value: editValue })
+                        //   : { [field]: editValue };
+
+                        const updatedData =
+                          "valueSetter" in col && col.valueSetter
+                            ? col.valueSetter({ value: editValue })
+                            : { [field]: editValue };
 
                         const newRow = { ...row, ...updatedData };
                         const idxInAll = gridData.findIndex((r) => r === row);
@@ -1366,7 +1747,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                         }
                       }}
                     />
-                  ) : col.editorType === "checkbox" && col.editable ? (
+                  ) : editorType === "checkbox" && col.editable ? (
                     <div className="flex items-center space-x-2">
                       <Switch
                         id={`${rowIndex}-${col.field}`}
@@ -1379,32 +1760,41 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                     </div>
                   ) : (
                     <div className="w-full">
-                      {col.tooltipField ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              {col.rowGroup
-                                ? ""
-                                : formatCellValue(cellValue, row || {}, col)}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent className="">
-                            {(() => {
-                              const tooltipValue = row?.[col.tooltipField];
-                              const result =
-                                col.tooltipField && tooltipValue != null && tooltipValue !== ""
-                                  ? tooltipValue
-                                  : col.rowGroup
-                                    ? ""
-                                    : formatCellValue(cellValue, row || {}, col);
+                      {
+                        // col.tooltipField
+                        "tooltipField" in col && col.tooltipField ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                {col.rowGroup
+                                  ? ""
+                                  : formatCellValue(cellValue, row || {}, col)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="">
+                              {(() => {
+                                const tooltipValue = row?.[col.tooltipField];
+                                const result =
+                                  col.tooltipField &&
+                                  tooltipValue != null &&
+                                  tooltipValue !== ""
+                                    ? tooltipValue
+                                    : col.rowGroup
+                                      ? ""
+                                      : formatCellValue(
+                                          cellValue,
+                                          row || {},
+                                          col
+                                        );
 
-                              return result != null ? String(result) : ""; // Ensure it's a valid string or ReactNode
-                            })()}
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        formatCellValue(cellValue, row || {}, col)
-                      )}
+                                return result != null ? String(result) : ""; // Ensure it's a valid string or ReactNode
+                              })()}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          formatCellValue(cellValue, row || {}, col)
+                        )
+                      }
                     </div>
                   )}
                 </TableCell>
@@ -1488,6 +1878,10 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       (e: React.DragEvent) => {
         e.preventDefault();
         const field = e.dataTransfer.getData("columnField");
+
+        if (enablePivot && !pivotColumns.includes(field)) {
+          setColumnGrouped(field, true);
+        }
         if (field && !groupedColumns.includes(field)) {
           setColumnGrouped(field, true);
         }
@@ -1535,12 +1929,14 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
     const renderTotalRow = () => (
       <div
-        className={`bg-gray-100  ${grandTotalRow === "bottom" ? "sticky bottom-0" : "sticky top-0"
-          }`}
+        className={`bg-gray-100  ${
+          grandTotalRow === "bottom" ? "sticky bottom-0" : "sticky top-0"
+        }`}
       >
         <Table
-          className={`${tableLayout === "fixed" ? "table-fixed" : "table-auto"
-            } border-b border-gray-200`}
+          className={`${
+            tableLayout === "fixed" ? "table-fixed" : "table-auto"
+          } border-b border-gray-200`}
         >
           <TableBody>
             <TableRow>
@@ -1556,7 +1952,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                       {calculateTotals[col.field]?.toLocaleString()}
                     </div>
                   ) : (
-                    <div className="font-semibold">
+                    <div className="font-semibold ">
                       {index === 0 ? "Total" : ""}
                     </div>
                   )}
@@ -1629,9 +2025,26 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     const [search, setSearch] = useState("");
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
+    // to exit from the editing mode - full row edit mode
+    const handleStopEditing = useCallback(() => {
+      setEditingRowId(null);
+      setEditingRowData(null);
+    }, [setEditingRowId, setEditingRowData]);
+
+    // to  start editing the second row - full row edit mode
+    const handleEditSecondRow = useCallback(() => {
+      const rowIndex = 1;
+      // 2nd row means index 1 (0-based)
+
+      const row = gridData[rowIndex];
+      if (!row) return;
+      setEditingRowId(rowIndex);
+      setEditingRowData(row);
+    }, [gridData, setEditingRowId, setEditingRowData]);
+
     // Add this above your return statement
     const aggregationStats = useMemo(() => {
-      if (!isServerSide) return;
+      if (isServerSide) return [];
 
       if (!columns || !columns.length || !gridData.length) return {};
       const stats: Record<string, number> = {};
@@ -1671,9 +2084,53 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       return stats;
     }, [columns, gridData, isServerSide]);
 
+    // Add keyboard event listener for adding a new row when we have addRowConfig CTRL + A
+    useEffect(() => {
+      if (!addRowConfig) return;
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+        const isPlusKey = e.key === "+" || e.key === "="; // some keyboards require Shift + = for +
+
+        if (isCtrlOrMeta && isPlusKey) {
+          e.preventDefault(); // prevent browser zoom
+          const initial = generateInitialRowData();
+          setNewRowData(initial);
+          setIsAddingRow(true);
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [addRowConfig]);
     // Update the main grid container JSX
     return (
       <div className="relative w-[100%] h-full">
+        {editType === "fullRow" && fullRowButtons && (
+          <div className="gap-2 flex items-center mb-2">
+            {[
+              {
+                title: "Start Editing Line 2",
+                onClick: handleEditSecondRow,
+                hide: gridData?.length < 2,
+              },
+              {
+                title: "Stop Editing",
+                onClick: handleStopEditing,
+                hide: false,
+              },
+            ]
+              .filter((btn) => !btn.hide)
+              .map((btn) => (
+                <button
+                  className="border px-[12px] py-[5px] cursor-pointer text-[12px] rounded-[6px]"
+                  onClick={btn.onClick}
+                >
+                  {btn.title}
+                </button>
+              ))}
+          </div>
+        )}
         {/* Loading Overlay */}
         {loading && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
@@ -1684,9 +2141,42 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           </div>
         )}
 
+        {addRowConfig && (
+          <div className="flex justify-end px-4 py-2">
+            <button
+              className="bg-green-600 cursor-pointer text-white px-4 py-1 hover:bg-green-700 transition rounded-full"
+              onClick={() => {
+                const initial = generateInitialRowData();
+                setNewRowData(initial);
+                setIsAddingRow(true); // explicitly here instead
+              }}
+            >
+              + Add New Row
+            </button>
+          </div>
+        )}
+
+        {/* Pivot Columns  */}
+        {/* Pivot panel for managing pivot columns */}
+        {/* Only render if pivotMode is enabled */}
+        {enablePivot && setPivotColumns && (
+          <PivotPanel
+            pivotColumns={
+              serverPivoting && serverPivotCols ? serverPivotCols : pivotColumns
+            }
+            columns={columns}
+            setPivotColumns={
+              serverPivoting && setServerPivotColsFn
+                ? setServerPivotColsFn
+                : setPivotColumns
+            }
+            handlePivotDrop={handlePivotDrop}
+          />
+        )}
+
         {/* Grand Total Row (Top) */}
         {gridData.length > 0 && grandTotalRow === "top" && renderTotalRow()}
-        <div className="flex h-[100%] max-h-[80vh] overflow-y-scroll">
+        <div className="flex h-[100%] max-h-[80vh] overflow-y-scroll hide-scrollbar">
           {/* Scrollable container for the virtualized rows */}
           <div
             style={{
@@ -1698,12 +2188,182 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             <Table
               ref={tableRef}
               className={cn(
-                "w-full border-b border-l border-r border-gray-200"
+                "hiddenw-full border-b border-l border-r border-gray-200"
               )}
               style={{
                 tableLayout,
               }}
             >
+              {/* Pivoting Start here */}
+              <>
+                {enablePivot &&
+                  pivotDataColumns &&
+                  pivotDataColumns.length !== 0 && (
+                    <thead className="bg-indigo-100  w-full">
+                      {(() => {
+                        const pivotFields = pivotDataColumns.map(
+                          (obj) => Object.keys(obj)[0]
+                        );
+                        const pivotValues = pivotDataColumns.map(
+                          (obj) => Object.values(obj)[0]
+                        );
+
+                        const combinations = pivotValues.reduce(
+                          (acc, values) =>
+                            acc.flatMap((comb) =>
+                              values.map((val) => [...comb, val])
+                            ),
+                          [[]] as any[]
+                        );
+
+                        const activeAggFields = serverPivoting
+                          ? new Set(serverAggCols?.map((def) => def.field))
+                          : new Set(_aggCols?.map((def) => def.field));
+
+                        const metrics = columns.filter(
+                          (col) => col.aggFunc && activeAggFields.has(col.field)
+                        );
+
+                        return (
+                          <>
+                            {/* Each pivot field row */}
+                            {pivotFields.map((pivotField, rowIndex) => {
+                              const repeatFactor =
+                                pivotValues
+                                  .slice(rowIndex + 1)
+                                  .reduce((acc, cur) => acc * cur.length, 1) *
+                                metrics.length;
+
+                              const headerCells: React.JSX.Element[] = [];
+
+                              let lastValue = null;
+
+                              for (
+                                let i = 0;
+                                i < combinations.length * metrics.length;
+                                i += repeatFactor
+                              ) {
+                                const comboIndex = Math.floor(
+                                  i / metrics.length
+                                );
+                                const value =
+                                  combinations[comboIndex][rowIndex];
+
+                                if (value !== lastValue) {
+                                  headerCells.push(
+                                    <th
+                                      key={`${pivotField}-${value}-${i}`}
+                                      colSpan={repeatFactor}
+                                      className="text-center border border-gray-200 bg-gray-100 px-4 py-2"
+                                    >
+                                      {value}
+                                    </th>
+                                  );
+                                  lastValue = value;
+                                }
+                              }
+
+                              return (
+                                <tr key={`${pivotField}-${rowIndex}`}>
+                                  {rowIndex === 0 &&
+                                    groupedColumns.length !== 0 && (
+                                      <th
+                                        rowSpan={pivotFields.length + 1}
+                                        onClick={toggleSortByTotalMedals}
+                                        className="cursor-pointer sticky left-0 z-20 border border-gray-200 px-4 py-2 bg-gray-100 "
+                                      >
+                                        Group
+                                        {sortDirection === "asc"
+                                          ? "↑"
+                                          : sortDirection === "desc"
+                                            ? "↓"
+                                            : ""}
+                                      </th>
+                                    )}
+                                  {headerCells}
+                                </tr>
+                              );
+                            })}
+
+                            {/* Metrics row */}
+                            <tr>
+                              {combinations.map((combo, index) =>
+                                metrics.map((metric) => (
+                                  <th
+                                    key={`metric-${index}-${metric.field}`}
+                                    className="text-center border border-gray-200 px-4 py-2 font-normal text-sm text-gray-700"
+                                  >
+                                    {columnAggFnMap?.[metric.field] || "sum"}(
+                                    {metric.headerName || metric.field})
+                                  </th>
+                                ))
+                              )}
+                            </tr>
+                          </>
+                        );
+                      })()}
+                    </thead>
+                  )}
+
+                {/* Pivot table data */}
+                {groupedPivotedData &&
+                  groupedPivotedData.length > 0 &&
+                  enablePivot &&
+                  pivotColumns.length > 0 &&
+                  !(
+                    serverPivoting &&
+                    serverPivotCols &&
+                    serverPivotCols.length < 1
+                  ) && (
+                    <TableBody>
+                      {groupedPivotedData.map((group) => {
+                        return (
+                          <TableRow
+                            key={`${group.groupKey}-${sortDirection}`}
+                            className="table-row-pop"
+                          >
+                            {/* Group Label + Total */}
+
+                            {groupedColumns.length !== 0 && (
+                              <th className="text-center border border-gray-200 px-4 py-2 font-normal text-sm text-gray-700">
+                                {group.groupKey} (
+                                {group.totalMedals?.toLocaleString()})
+                              </th>
+                            )}
+
+                            {/* Only render non-group/pivot columns */}
+                            {group?.children?.flatMap((childRow, childIndex) =>
+                              displayColumns
+                                .filter((col) => {
+                                  const def = columnDefs?.columns?.find(
+                                    (def) => def.field === col.field
+                                  );
+                                  return !def?.rowGroup && !def?.pivot; // Exclude rowGroup & pivot columns
+                                })
+                                .filter((col) =>
+                                  group?.children?.some(
+                                    (row) => row[col.field] !== undefined
+                                  )
+                                )
+                                .map((col) => {
+                                  return (
+                                    <th
+                                      key={`${group.groupKey}-${childIndex}-${col.field}`}
+                                      className="text-center border border-gray-200 px-4 py-2 font-normal text-sm text-gray-700"
+                                    >
+                                      {childRow[col.field]?.toLocaleString()}
+                                    </th>
+                                  );
+                                })
+                            )}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  )}
+              </>
+              {/* Pivoting End here */}
+
               <TableHeader className="sticky top-0 z-30 bg-gray-200 shadow-sm">
                 <TableRow className="divide-x divide-gray-300">
                   {rowSelection && (
@@ -1714,9 +2374,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                             checked={
                               Object.keys(selectedRows).length > 0 &&
                               Object.keys(selectedRows).length ===
-                              gridData.length
+                                gridData.length
                             }
-
                             onCheckedChange={handleHeaderCheckboxChange}
                             className={
                               "border-1 border-gray-400 cursor-pointer"
@@ -1727,134 +2386,229 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                     </TableHead>
                   )}
 
-                  {displayColumns.map((col) => {
-                    const isDragged = draggedColumn === col.field;
-                    const isDragOver = dragOverColumn === col.field;
+                  {/* Column/Table header */}
+                  {(!enablePivot ||
+                    (!serverPivoting && pivotColumns.length < 1) ||
+                    (serverPivoting && !serverPivotCols?.length)) &&
+                    displayColumns.map((col, ind) => {
+                      const isDragged = draggedColumn === col.field;
+                      const isDragOver = dragOverColumn === col.field;
 
-                    return (
-                      <TableHead
-                        key={col.field}
-                        draggable={showGroupByPanel}
-                        className={cn("top-0 z-10 transition-colors", {
-                          "opacity-50": isDragged,
-                          "border-1 border-gray-400": isDragOver,
-                          "cursor-move": showGroupByPanel,
-                        })}
-                        style={{
-                          ...getCellWidth(col),
-                        }}
-                        onDragStart={(e) => {
-                          handleColumnDragStart(e, col.field);
-                          e.dataTransfer.setData("columnField", col.field);
-                        }}
-                        onDragOver={(e) => handleColumnDragOver(e, col.field)}
-                        onDragEnter={handleColumnDragEnter}
-                        onDragLeave={handleColumnDragLeave}
-                        onDrop={(e) => handleColumnDrop(e, col.field)}
-                        onDragEnd={handleColumnDragEnd}
-                      >
-                        <div className="w-inherit flex items-center">
-                          <div className="flex-1 flex items-center justify-between w-[85%]">
-                            <div
-                              className="group flex items-center cursor-pointer font-semibold w-full text-gray-700"
-                              onClick={(e) => handleMultiSort(col.field, e)}
-                            >
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div
-                                    className="w-[85%] break-words whitespace-normal"
-                                    style={{ textWrap: "initial" }}
-                                  >
-                                    <p>{col.headerName}</p>
-                                  </div>
-                                </TooltipTrigger>
-                                {col.headerTooltip && (
-                                  <TooltipContent className={""}>
-                                    {col.headerTooltip}
-                                  </TooltipContent>
-                                )}
-                              </Tooltip>
-
-                              <span className="ml-1 w-[10%] opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                                {sortConfig.key === col.field ? (
-                                  sortConfig.direction === "asc" ? (
-                                    <ChevronUp className="h-4 w-4 text-gray-400" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4 text-gray-400" />
-                                  )
-                                ) : (
-                                  <ChevronsUpDown className="h-4 w-4 text-gray-400" />
-                                )}
-                              </span>
-                            </div>
-                            {col.showFilter !== false && (
-                              <div className="relative group">
-                                <Popover>
-                                  <PopoverTrigger asChild>
+                      return (
+                        <TableHead
+                          key={`${col.field}-${ind}`}
+                          draggable={showGroupByPanel}
+                          className={cn("top-0 z-10 transition-colors", {
+                            "opacity-50": isDragged,
+                            "border-1 border-gray-400": isDragOver,
+                            "cursor-move": showGroupByPanel,
+                          })}
+                          style={{
+                            ...getCellWidth(col),
+                          }}
+                          onDragStart={(e) => {
+                            handleColumnDragStart(e, col.field);
+                            e.dataTransfer.setData("columnField", col.field);
+                          }}
+                          onDragOver={(e) => handleColumnDragOver(e, col.field)}
+                          onDragEnter={handleColumnDragEnter}
+                          onDragLeave={handleColumnDragLeave}
+                          onDrop={(e) => handleColumnDrop(e, col.field)}
+                          onDragEnd={handleColumnDragEnd}
+                        >
+                          <div className="w-inherit flex items-center">
+                            <div className="flex-1 flex items-center justify-between w-[85%]">
+                              <div
+                                className="group flex items-center cursor-pointer font-semibold w-full text-gray-700"
+                                onClick={(e) => handleMultiSort(col.field, e)}
+                              >
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
                                     <div
-                                      className="p-1 hover:bg-gray-200 rounded cursor-pointer filter-icon"
-                                      data-column={col.field}
+                                      className="w-[85%] break-words whitespace-normal"
+                                      style={{ textWrap: "initial" }}
                                     >
-                                      <ListFilter
-                                        className={`h-4 w-4 ${filters[col.field]
-                                            ? "text-blue-500"
-                                            : "text-gray-500"
-                                          }`}
-                                      />
+                                      <p>{col.headerName}</p>
                                     </div>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto min-w-[220px] max-w-[250px] p-3 rounded-md shadow-lg bg-white border border-gray-200">
-                                    <CellFilter
-                                      column={col}
-                                      value={filters[col.field] || ""}
-                                      filterType={filterTypes[col.field]}
-                                      onFilterChange={(value) =>
-                                        handleFilterChange(col.field, value)
-                                      }
-                                      onFilterTypeChange={(type) =>
-                                        handleFilterTypeChange(col.field, type)
-                                      }
-                                      onClear={() =>
-                                        handleFilterChange(col.field, "")
-                                      }
-                                    />
-                                  </PopoverContent>
-                                </Popover>
+                                  </TooltipTrigger>
+                                  {
+                                    // col.headerTooltip &&
+                                    "headerTooltip" in col &&
+                                      col.headerTooltip && (
+                                        <TooltipContent className={""}>
+                                          {col.headerTooltip}
+                                        </TooltipContent>
+                                      )
+                                  }
+                                </Tooltip>
+
+                                <span className="ml-1 w-[10%] opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                  {sortConfig.key === col.field ? (
+                                    sortConfig.direction === "asc" ? (
+                                      <ChevronUp className="h-4 w-4 text-gray-400" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                                    )
+                                  ) : (
+                                    <ChevronsUpDown className="h-4 w-4 text-gray-400" />
+                                  )}
+                                </span>
                               </div>
-                            )}
+                              {
+                                // col.showFilter !== false &&
+                                "showFilter" in col &&
+                                  col.showFilter !== false && (
+                                    <div className="relative group">
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <div
+                                            className="p-1 hover:bg-gray-200 rounded cursor-pointer filter-icon"
+                                            data-column={col.field}
+                                          >
+                                            <ListFilter
+                                              className={`h-4 w-4 ${
+                                                filters[col.field]
+                                                  ? "text-blue-500"
+                                                  : "text-gray-500"
+                                              }`}
+                                            />
+                                          </div>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto min-w-[220px] max-w-[250px] p-3 rounded-md shadow-lg bg-white border border-gray-200">
+                                          <CellFilter
+                                            column={col}
+                                            value={filters[col.field] || ""}
+                                            filterType={filterTypes[col.field]}
+                                            onFilterChange={(value) =>
+                                              handleFilterChange(
+                                                col.field,
+                                                value
+                                              )
+                                            }
+                                            onFilterTypeChange={(type) =>
+                                              handleFilterTypeChange(
+                                                col.field,
+                                                type
+                                              )
+                                            }
+                                            onClear={() =>
+                                              handleFilterChange(col.field, "")
+                                            }
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                    </div>
+                                  )
+                              }
+                            </div>
                           </div>
-                        </div>
-                      </TableHead>
-                    );
-                  })}
+                        </TableHead>
+                      );
+                    })}
                 </TableRow>
               </TableHeader>
 
-              {/* Virtualized Body */}
-              <TableBody
-                style={{
-                  height: `${rowVirtualizer.getTotalSize()}px`,
-                  position: "relative",
-                }}
-              >
-                {rowVirtualizer
-                  .getVirtualItems()
-                  .map((virtualRow) => renderRow(virtualRow))}
+              {/* Adding new row in the table start here */}
+              <TableBody>
+                {newRowData && isAddingRow && (
+                  <TableRow className="bg-yellow-50">
+                    {displayColumns
+                      .filter((col) => !!col.editorType) // ✅ only render if editorType exists
+                      .map((col) => (
+                        <TableCell
+                          key={`new-${col.field}`}
+                          className="border-2 p-0"
+                        >
+                          <CellEditor
+                            columnDef={{
+                              editorType: col.editorType! as EditorType,
+                              editorParams: col.editorParams,
+                            }}
+                            value={
+                              newRowData[col.field] as
+                                | string
+                                | number
+                                | boolean
+                                | Date
+                                | null
+                            }
+                            onChange={(val) =>
+                              setNewRowData((prev) => ({
+                                ...prev,
+                                [col.field]: val,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const isValid = displayColumns
+                                  .filter((c) => !!c.editorType)
+                                  .every((col) => {
+                                    const value = newRowData[col.field];
+                                    return (
+                                      value !== null &&
+                                      value !== undefined &&
+                                      value !== ""
+                                    );
+                                  });
 
-                {/* If no data: simple fallback */}
-                {flattenedRows.length === 0 && (
-                  <TableRow className="h-24 text-center">
-                    <TableCell
-                      colSpan={displayColumns.length}
-                      className="h-24 text-center"
-                    >
-                      No results found
-                    </TableCell>
+                                if (isValid) {
+                                  addRowConfig?.onAdd?.(newRowData);
+                                  setNewRowData({});
+                                  setIsAddingRow(false);
+                                } else {
+                                  // Optional: show error UI
+
+                                  alert(
+                                    "Please fill all required fields before saving."
+                                  );
+                                  console.warn(
+                                    "Please fill all required fields before saving."
+                                  );
+                                }
+                              }
+
+                              if (e.key === "Escape") {
+                                setNewRowData({});
+                                setIsAddingRow(false);
+                              }
+                            }}
+                          />
+                        </TableCell>
+                      ))}
                   </TableRow>
                 )}
               </TableBody>
+              {/* Adding new row in the table end here */}
+
+              {(!enablePivot ||
+                (!serverPivoting && pivotColumns.length < 1) ||
+                (serverPivoting && !serverPivotCols?.length)) && (
+                <TableBody
+                  style={{
+                    height: `${rowVirtualizer.getTotalSize()}px`,
+                    position: "relative",
+                  }}
+                >
+                  {rowVirtualizer
+                    .getVirtualItems()
+                    .map((virtualRow) => renderRow(virtualRow))}
+
+                  {/* If no data: simple fallback */}
+                  {flattenedRows.length === 0 && (
+                    <TableRow className="h-24 text-center">
+                      <TableCell
+                        colSpan={displayColumns.length}
+                        className="h-24 text-center"
+                      >
+                        No results found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              )}
             </Table>
           </div>
+
           {showGroupByPanel && (
             <div
               style={{
@@ -1874,6 +2628,24 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                   groupedColumns={groupedColumns}
                   setColumnGrouped={setColumnGrouped}
                   handleGroupDrop={handleGroupDrop}
+                  togglePivot={togglePivot}
+                  enablePivot={enablePivot}
+                  setPivotColumns={
+                    serverPivoting && setServerPivotColsFn
+                      ? setServerPivotColsFn
+                      : setPivotColumns
+                  }
+                  pivotColumns={
+                    serverPivoting && serverPivotCols
+                      ? serverPivotCols
+                      : pivotColumns
+                  }
+                  selectedAggFn={selectedAggFn}
+                  columnAggFnMap={columnAggFnMap}
+                  setColumnAggFnMap={setColumnAggFnMap}
+                  handleAggDrop={handleAggDrop}
+                  setAggCols={_setAggCols}
+                  pivotMode={pivotMode}
                 />
               )}
 
@@ -1931,13 +2703,20 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                     <li key={col.field}>
                       {col.headerName}:{" "}
                       <span className="font-bold">
+                        {(aggregationStats as Record<string, number>)[
+                          col.field
+                        ]?.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                      {/* <span className="font-bold">
                         {aggregationStats[col.field]?.toLocaleString(
                           undefined,
                           {
                             maximumFractionDigits: 2,
                           }
                         )}
-                      </span>
+                      </span> */}
                     </li>
                   ))}
               </ul>

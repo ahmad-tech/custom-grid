@@ -34,14 +34,19 @@ export const GroupPanel: React.FC<GroupPanelProps> = ({
         </span>
       </div>
       <div className="p-2 flex flex-col gap-2">
-        {groupedColumns.map((field) => {
+        {groupedColumns.map((field, ind) => {
           const col = columns.find((c) => c.field === field);
+
           return (
-            <div className="flex items-center justify-between bg-gray-700 px-2 py-1 rounded-full">
-              <span key={field} className="flex items-center">
+            <div
+              key={ind}
+              className="flex items-center justify-between bg-gray-700 px-2 py-1 rounded-full"
+            >
+              <span className="flex items-center">
                 <GripVertical className="w-3 h-3 mr-1" />
                 {col?.headerName}
               </span>
+
               <button
                 onClick={() => setColumnGrouped(field, false)}
                 className="ml-1 hover:bg-gray-600 rounded-full p-1 cursor-pointer"

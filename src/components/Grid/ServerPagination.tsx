@@ -1,6 +1,5 @@
 import { IPagination } from "@/types/grid";
 import React from "react";
-
 import {
   ChevronRight,
   ChevronLeft,
