@@ -3156,8 +3156,237 @@ function pivotAndAggregateByGroup(data, groupBy, pivotColumns, columnDefs) {
   return result;
 }
 
+/**
+ * Converts flat data with path arrays into a tree structure.
+ */
+function buildTreeData(flatData, treeDataChildrenField, getDataPath // optional for parentId/children formats
+) {
+  if (!flatData || flatData.length === 0) return [];
+  // Case 1: Already has children (tree structure)
+  if (treeDataChildrenField === "children") {
+    return flatData;
+  }
+  // Case 2: path[] based (AG Grid-style treeData)
+  if (treeDataChildrenField === "path" && getDataPath) {
+    var root_1 = [];
+    var pathMap_1 = new Map();
+    flatData.forEach(function (row) {
+      var path = getDataPath(row);
+      var parent = null;
+      path.forEach(function (segment, idx) {
+        var currentPath = path.slice(0, idx + 1).join("/");
+        if (!pathMap_1.has(currentPath)) {
+          var node = idx === path.length - 1 ? tslib.__assign(tslib.__assign({}, row), {
+            children: []
+          }) : {
+            name: segment,
+            path: path.slice(0, idx + 1),
+            children: []
+          };
+          pathMap_1.set(currentPath, node);
+          if (parent) {
+            parent.children.push(node);
+          } else {
+            root_1.push(node);
+          }
+        }
+        parent = pathMap_1.get(currentPath);
+      });
+    });
+    return root_1;
+  }
+  // Case 3: Flat parentId/id structure
+  if (treeDataChildrenField === "parentId") {
+    var idMap_1 = new Map();
+    var root_2 = [];
+    flatData.forEach(function (row) {
+      var id = String(row.id); // safely cast to string
+      idMap_1.set(id, tslib.__assign(tslib.__assign({}, row), {
+        children: []
+      }));
+    });
+    flatData.forEach(function (row) {
+      var id = String(row.id);
+      var parentId = row.parentId;
+      var node = idMap_1.get(id);
+      if (row.parentId) {
+        var parent_1 = idMap_1.get(parentId);
+        if (parent_1) {
+          parent_1.children.push(node);
+        }
+      } else {
+        root_2.push(node);
+      }
+    });
+    return root_2;
+  }
+  // Fallback: return as-is
+  return flatData;
+}
+/**
+ * Flattens tree data for rendering, respecting expanded state.
+ */
+function flattenTree(nodes, expanded, level, rowIndexRef, parentPath) {
+  if (level === void 0) {
+    level = 0;
+  }
+  if (rowIndexRef === void 0) {
+    rowIndexRef = {
+      current: 0
+    };
+  }
+  if (parentPath === void 0) {
+    parentPath = [];
+  }
+  var flat = [];
+  nodes.forEach(function (node) {
+    var _a;
+    var currentIndex = rowIndexRef.current++;
+    // Ensure node.name is a string
+    var nodeName = typeof node.name === "string" ? node.name : String((_a = node.name) !== null && _a !== void 0 ? _a : "");
+    var nodePath = tslib.__spreadArray(tslib.__spreadArray([], parentPath, true), [nodeName], false);
+    var nodeKey = nodePath.join("/");
+    flat.push({
+      type: "data",
+      row: node,
+      rowIndex: currentIndex,
+      indent: level,
+      nodeKey: nodeKey
+    });
+    if (node.children && Array.isArray(node.children) && node.children.length > 0 && expanded[nodeKey]) {
+      flat.push.apply(flat, flattenTree(node.children, expanded, level + 1, rowIndexRef, nodePath));
+    }
+  });
+  return flat;
+}
+/**
+ * Recursively adds aggregation values to each node in the tree.
+ * - aggregatedCount: total number of descendant leaf files
+ * - provided: only 1 for leaf nodes (files), not folders
+ */
+function addAggregations(node) {
+  if (!node.children || node.children.length === 0) {
+    node.aggregatedCount = 1;
+    node.provided = 1;
+    return 1;
+  }
+  var total = 0;
+  for (var _i = 0, _a = node.children; _i < _a.length; _i++) {
+    var child = _a[_i];
+    total += addAggregations(child);
+  }
+  node.aggregatedCount = total;
+  return total;
+}
+/**
+ * Add aggregations to a full tree list (root-level array)
+ */
+function computeAggregationsForTree(tree) {
+  tree.forEach(function (node) {
+    return addAggregations(node);
+  });
+}
+/**
+ * Recursively collect all nodeKeys (including self) for a node and its descendants.
+ */
+function getAllDescendantNodeKeys(node, parentPath) {
+  var _a;
+  if (parentPath === void 0) {
+    parentPath = [];
+  }
+  var nodeName = typeof node.name === "string" ? node.name : String((_a = node.name) !== null && _a !== void 0 ? _a : "");
+  var nodePath = tslib.__spreadArray(tslib.__spreadArray([], parentPath, true), [nodeName], false);
+  var nodeKey = nodePath.join("/");
+  var keys = [nodeKey];
+  if (node.children && Array.isArray(node.children)) {
+    for (var _i = 0, _b = node.children; _i < _b.length; _i++) {
+      var child = _b[_i];
+      keys = keys.concat(getAllDescendantNodeKeys(child, nodePath));
+    }
+  }
+  return keys;
+}
+/**
+ * Get the parent nodeKey for a given nodeKey.
+ */
+function getParentNodeKey(nodeKey) {
+  var parts = nodeKey.split("/");
+  if (parts.length <= 1) return null;
+  return parts.slice(0, -1).join("/");
+}
+/**
+ * Given a nodeKey and the flattenedRows, find the node object.
+ */
+function findNodeByNodeKey(flattenedRows, nodeKey) {
+  return flattenedRows.find(function (item) {
+    return item.nodeKey === nodeKey;
+  });
+}
+/**
+ * Move a node from one location to another in a tree structure.
+ * @param tree The tree data array (root level).
+ * @param sourcePath The path array of the node to move.
+ * @param targetPath The path array of the new parent node (or [] for root).
+ * @returns A new tree with the node moved.
+ */
+function moveTreeNode(tree, sourcePath, targetPath) {
+  if (!tree || !Array.isArray(tree) || sourcePath.length === 0) return tree;
+  // Helper to deep clone the tree
+  var deepClone = function (obj) {
+    return JSON.parse(JSON.stringify(obj));
+  };
+  var clonedTree = deepClone(tree);
+  // Helper to find and remove node by path
+  function removeNode(nodes, path) {
+    if (path.length === 0) return null;
+    var segment = path[0],
+      rest = path.slice(1);
+    var idx = nodes.findIndex(function (n) {
+      return n.name === segment;
+    });
+    if (idx === -1) return null;
+    if (rest.length === 0) {
+      // Remove and return the node
+      return nodes.splice(idx, 1)[0];
+    }
+    if (nodes[idx].children) {
+      return removeNode(nodes[idx].children, rest);
+    }
+    return null;
+  }
+  // Helper to insert node at target path
+  function insertNode(nodes, path, node) {
+    if (path.length === 0) {
+      nodes.push(node);
+      return;
+    }
+    var segment = path[0],
+      rest = path.slice(1);
+    var target = nodes.find(function (n) {
+      return n.name === segment;
+    });
+    if (!target) {
+      // If target path doesn't exist, create it as a folder
+      target = {
+        name: segment,
+        children: []
+      };
+      nodes.push(target);
+    }
+    if (!target.children) target.children = [];
+    insertNode(target.children, rest, node);
+  }
+  // Remove node from source
+  var nodeToMove = removeNode(clonedTree, sourcePath);
+  if (!nodeToMove) return tree;
+  // Update the node's path property
+  nodeToMove.path = tslib.__spreadArray(tslib.__spreadArray([], targetPath, true), [nodeToMove.name], false);
+  // Insert node at target
+  insertNode(clonedTree, targetPath, nodeToMove);
+  return clonedTree;
+}
+
 var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
-  // for full row editing
   var _b = _a.data,
     data = _b === void 0 ? [] : _b,
     onDataChange = _a.onDataChange,
@@ -3186,25 +3415,45 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     _h = _a.pivotMode,
     pivotMode = _h === void 0 ? false : _h,
     serverPivoting = _a.serverPivoting,
-    addRowConfig = _a.addRowConfig,
     editType = _a.editType,
     onCellValueChanged = _a.onCellValueChanged,
-    onRowValueChanged = _a.onRowValueChanged,
-    fullRowButtons = _a.fullRowButtons;
-  var _j = React.useState(null),
-    editingRowId = _j[0],
-    setEditingRowId = _j[1];
-  var _k = React.useState(null),
-    editingRowData = _k[0],
-    setEditingRowData = _k[1];
+    onRowValueChanged = _a.onRowValueChanged;
+    _a.fullRowButtons;
+    var treeData = _a.treeData,
+    getDataPath = _a.getDataPath,
+    treeDataChildrenField = _a.treeDataChildrenField,
+    _j = _a.groupDefaultExpanded,
+    groupDefaultExpanded = _j === void 0 ? -1 : _j,
+    rowDragManaged = _a.rowDragManaged,
+    onRowDragEnd = _a.onRowDragEnd,
+    showChildCount = _a.showChildCount,
+    parentRow = _a.parentRow;
+  var addRowConfig = columnDefs.addRowConfig;
+  var _k = React.useState({}),
+    treeExpandedRows = _k[0],
+    setTreeExpandedRows = _k[1];
+  //Add state to track the drag-over row
+  var _l = React.useState(null),
+    dragOverRowKey = _l[0],
+    setDragOverRowKey = _l[1];
+  var _m = React.useState(false),
+    treeInit = _m[0],
+    setTreeInit = _m[1];
+  // for full row editing
+  var _o = React.useState(null),
+    editingRowId = _o[0],
+    setEditingRowId = _o[1];
+  var _p = React.useState(null),
+    editingRowData = _p[0],
+    setEditingRowData = _p[1];
   // Tracks whether the user is currently editing/adding a new row
-  var _l = React.useState(false),
-    isAddingRow = _l[0],
-    setIsAddingRow = _l[1];
+  var _q = React.useState(false),
+    isAddingRow = _q[0],
+    setIsAddingRow = _q[1];
   // Holds the data being entered for the new row
-  var _m = React.useState({}),
-    newRowData = _m[0],
-    setNewRowData = _m[1];
+  var _r = React.useState({}),
+    newRowData = _r[0],
+    setNewRowData = _r[1];
   var generateInitialRowData = function () {
     var initial = {};
     columns === null || columns === void 0 ? void 0 : columns.forEach(function (col) {
@@ -3215,18 +3464,18 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     return initial;
   };
   // get server-pivoting props
-  var _o = serverPivoting || {},
-    serverPivotedData = _o.serverPivotedData,
-    serverPivotDataColumns = _o.serverPivotDataColumns,
-    serverPivotCols = _o.serverPivotCols,
-    setServerPivotColsFn = _o.setServerPivotColsFn,
-    setServerGroupedColsFn = _o.setServerGroupedCols,
-    setServerAggColsFn = _o.setServerAggColsFn,
-    serverAggCols = _o.serverAggCols;
+  var _s = serverPivoting || {},
+    serverPivotedData = _s.serverPivotedData,
+    serverPivotDataColumns = _s.serverPivotDataColumns,
+    serverPivotCols = _s.serverPivotCols,
+    setServerPivotColsFn = _s.setServerPivotColsFn,
+    setServerGroupedColsFn = _s.setServerGroupedCols,
+    setServerAggColsFn = _s.setServerAggColsFn,
+    serverAggCols = _s.serverAggCols;
   var isServerSide = rowModelType === "serverSide";
-  var _p = React.useState(pivotMode),
-    enablePivot = _p[0],
-    setEnablePivot = _p[1];
+  var _t = React.useState(pivotMode),
+    enablePivot = _t[0],
+    setEnablePivot = _t[1];
   var defaultPivotColumns = React.useMemo(function () {
     var _a;
     return ((_a = columnDefs.columns) === null || _a === void 0 ? void 0 : _a.filter(function (item) {
@@ -3236,24 +3485,24 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     })) || [];
   }, [columnDefs]);
   // To apply pivot on like game, year etc
-  var _q = React.useState(defaultPivotColumns),
-    pivotColumns = _q[0],
-    setPivotColumns = _q[1];
-  var _r = React.useState(columnDefs);
-    _r[0];
-    _r[1];
+  var _u = React.useState(defaultPivotColumns),
+    pivotColumns = _u[0],
+    setPivotColumns = _u[1];
+  var _v = React.useState(columnDefs);
+    _v[0];
+    _v[1];
   // sort data on pivoting mode
-  var _s = React.useState(null),
-    sortDirection = _s[0],
-    setSortDirection = _s[1];
+  var _w = React.useState(null),
+    sortDirection = _w[0],
+    setSortDirection = _w[1];
   var toggleSortByTotalMedals = function () {
     setSortDirection(function (prev) {
       return prev === "asc" ? "desc" : "asc";
     });
   };
-  var _t = React.useState({}),
-    columnAggFnMap = _t[0],
-    setColumnAggFnMap = _t[1];
+  var _x = React.useState({}),
+    columnAggFnMap = _x[0],
+    setColumnAggFnMap = _x[1];
   var aggCols = React.useMemo(function () {
     var _a, _b;
     if (!enablePivot) return;
@@ -3269,13 +3518,11 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     });
   }, [columnDefs, data, columnAggFnMap]);
   // eg field, aggFunc - silver, sum
-  var _u = React.useState(serverAggCols ? serverAggCols : aggCols || []),
-    _aggCols = _u[0],
-    _setAggCols = _u[1];
+  var _y = React.useState(serverAggCols ? serverAggCols : aggCols || []),
+    _aggCols = _y[0],
+    _setAggCols = _y[1];
   // 🧠 Automatically filter when columnDefs or _aggCols change
-  var _v = React.useState("sum"),
-    selectedAggFn = _v[0];
-    _v[1];
+  var selectedAggFn = React.useState("sum")[0];
   // drag and drop of the column while applying agg
   var handleAggDrop = function (e) {
     if (!enablePivot) return;
@@ -3353,59 +3600,98 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     });
   }, []);
   var getCookedData = useCookedData(columnDefs).getCookedData;
-  var _w = columnDefs.columns,
-    propColumns = _w === void 0 ? [] : _w,
-    _x = columnDefs.masterDetail,
-    masterDetail = _x === void 0 ? false : _x,
-    _y = columnDefs.detailGridOptions,
-    detailGridOptions = _y === void 0 ? {} : _y,
-    _z = columnDefs.getDetailRowData,
-    getDetailRowData = _z === void 0 ? undefined : _z,
-    _0 = columnDefs.aggFuncs,
-    aggFuncs = _0 === void 0 ? {} : _0,
-    _1 = columnDefs.grandTotalRow,
-    grandTotalRow = _1 === void 0 ? "none" : _1,
-    _2 = columnDefs.tableLayout,
-    tableLayout = _2 === void 0 ? "fixed" : _2;
+  var _z = columnDefs.columns,
+    propColumns = _z === void 0 ? [] : _z,
+    _0 = columnDefs.masterDetail,
+    masterDetail = _0 === void 0 ? false : _0,
+    _1 = columnDefs.detailGridOptions,
+    detailGridOptions = _1 === void 0 ? {} : _1,
+    _2 = columnDefs.getDetailRowData,
+    getDetailRowData = _2 === void 0 ? undefined : _2,
+    _3 = columnDefs.aggFuncs,
+    aggFuncs = _3 === void 0 ? {} : _3,
+    _4 = columnDefs.grandTotalRow,
+    grandTotalRow = _4 === void 0 ? "none" : _4,
+    _5 = columnDefs.tableLayout,
+    tableLayout = _5 === void 0 ? "fixed" : _5;
   // State
-  var _3 = React.useState([]),
-    gridData = _3[0],
-    setGridData = _3[1];
-  var _4 = React.useState([]),
-    columns = _4[0],
-    setColumns = _4[1];
-  var _5 = React.useState({
+  var _6 = React.useState([]),
+    gridData = _6[0],
+    setGridData = _6[1];
+  var _7 = React.useState([]),
+    columns = _7[0],
+    setColumns = _7[1];
+  var _8 = React.useState({
       key: null,
       direction: "asc"
     }),
-    sortConfig = _5[0],
-    setSortConfig = _5[1];
-  var _6 = React.useState({}),
-    filters = _6[0],
-    setFilters = _6[1];
-  var _7 = React.useState({}),
-    filterTypes = _7[0],
-    setFilterTypes = _7[1];
-  var _8 = React.useState({}),
-    debouncedFilters = _8[0],
-    setDebouncedFilters = _8[1];
-  var _9 = React.useState([]),
-    groupedColumns = _9[0],
-    setGroupedColumns = _9[1];
+    sortConfig = _8[0],
+    setSortConfig = _8[1];
+  var _9 = React.useState({}),
+    filters = _9[0],
+    setFilters = _9[1];
   var _10 = React.useState({}),
-    expandedGroups = _10[0],
-    setExpandedGroups = _10[1];
+    filterTypes = _10[0],
+    setFilterTypes = _10[1];
   var _11 = React.useState({}),
-    selectedRows = _11[0],
-    setSelectedRows = _11[1];
+    debouncedFilters = _11[0],
+    setDebouncedFilters = _11[1];
+  var _12 = React.useState([]),
+    groupedColumns = _12[0],
+    setGroupedColumns = _12[1];
+  var _13 = React.useState({}),
+    expandedGroups = _13[0],
+    setExpandedGroups = _13[1];
+  // State for selected rows (nodeKey: boolean)
+  var _14 = React.useState({}),
+    selectedRows = _14[0],
+    setSelectedRows = _14[1];
+  // Handler for tree row selection
+  var handleTreeRowCheckboxChange = function (nodeKey, checked) {
+    setSelectedRows(function (prev) {
+      var updated = tslib.__assign({}, prev);
+      // Find the node in the flattenedRows
+      var node = findNodeByNodeKey(flattenedRows, nodeKey);
+      if (!node) return updated;
+      // Only select/deselect this node and its descendants (not the whole tree)
+      var allKeys = getAllDescendantNodeKeys(node.row, nodeKey.split("/").slice(0, -1));
+      if (checked) {
+        allKeys.forEach(function (key) {
+          return updated[key] = true;
+        });
+      } else {
+        allKeys.forEach(function (key) {
+          return delete updated[key];
+        });
+      }
+      // Bubble up: If all siblings are selected, select parent
+      var parentKey = getParentNodeKey(nodeKey);
+      while (parentKey !== null) {
+        var parent_1 = findNodeByNodeKey(flattenedRows, parentKey);
+        if (parent_1 && parent_1.row && parent_1.row.children) {
+          var allChildrenKeys = parent_1.row.children.map(function (child) {
+            return tslib.__spreadArray(tslib.__spreadArray([], parentKey.split("/"), true), [child.name], false).join("/");
+          });
+          var allSelected = allChildrenKeys.every(function (key) {
+            return updated[key];
+          });
+          if (allSelected && checked) {
+            updated[parentKey] = true;
+          } else if (!checked) {
+            delete updated[parentKey];
+          }
+        }
+        parentKey = getParentNodeKey(parentKey);
+      }
+      return updated;
+    });
+  };
   var handlePivotDrop = React.useCallback(function (e) {
     e.preventDefault();
     if (!enablePivot) return;
     var field = e.dataTransfer.getData("columnField");
     // Find the column from the full column list
-    columns.find(function (c) {
-      return c.field === field;
-    });
+    // const col = columns.find((c) => c.field === field);
     // If pivot is not allowed on this column, exit early
     // if (!col || !col.pivot) return;
     if (field && !pivotColumns.includes(field)) {
@@ -3426,28 +3712,28 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     }
   }, [groupedColumns, isServerSide, onRowGroup]);
   // Column drag & drop
-  var _12 = React.useState(null),
-    draggedColumn = _12[0],
-    setDraggedColumn = _12[1];
-  var _13 = React.useState(null),
-    dragOverColumn = _13[0],
-    setDragOverColumn = _13[1];
+  var _15 = React.useState(null),
+    draggedColumn = _15[0],
+    setDraggedColumn = _15[1];
+  var _16 = React.useState(null),
+    dragOverColumn = _16[0],
+    setDragOverColumn = _16[1];
   var columnDragCounter = React.useRef(0);
   var tableRef = React.useRef(null);
   // Cell editing
-  var _14 = React.useState(null),
-    editingCell = _14[0],
-    setEditingCell = _14[1];
-  var _15 = React.useState(""),
-    editValue = _15[0],
-    setEditValue = _15[1];
+  var _17 = React.useState(null),
+    editingCell = _17[0],
+    setEditingCell = _17[1];
+  var _18 = React.useState(""),
+    editValue = _18[0],
+    setEditValue = _18[1];
   // Master/Detail
-  var _16 = React.useState({}),
-    expandedRows = _16[0],
-    setExpandedRows = _16[1];
-  var _17 = React.useState({}),
-    detailData = _17[0],
-    setDetailData = _17[1];
+  var _19 = React.useState({}),
+    expandedRows = _19[0],
+    setExpandedRows = _19[1];
+  var _20 = React.useState({}),
+    detailData = _20[0],
+    setDetailData = _20[1];
   // Create debounced filter handler using useCallback to maintain reference
   var debouncedFnRef = React.useRef(undefined);
   var debouncedSetFilters = React.useCallback(function (newFilters) {
@@ -3460,13 +3746,13 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     debouncedFnRef.current(newFilters);
   }, []);
   // Add undo/redo state
-  var _18 = React.useState({
+  var _21 = React.useState({
       past: [],
       present: data,
       future: []
     }),
-    history = _18[0],
-    setHistory = _18[1];
+    history = _21[0],
+    setHistory = _21[1];
   // Add undo/redo handlers
   var canUndo = history.past.length > 0;
   var canRedo = history.future.length > 0;
@@ -3524,7 +3810,23 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   // Initial Setup
   React.useEffect(function () {
     if (data && data.length > 0) {
-      var cookedData = isChild ? data : getCookedData(data);
+      var cookedData = void 0;
+      if (treeData && treeDataChildrenField) {
+        // Build the tree
+        cookedData = buildTreeData(data, treeDataChildrenField, getDataPath);
+        // Add aggregations ONLY if columns include them
+        var requiresAggregation = propColumns === null || propColumns === void 0 ? void 0 : propColumns.some(function (col) {
+          return col.field === "aggregatedCount" || col.field === "provided";
+        });
+        // Step 2: Add aggregations (Sum & Provided columns)
+        if (requiresAggregation) {
+          computeAggregationsForTree(cookedData);
+        }
+      } else if (isChild) {
+        cookedData = data;
+      } else {
+        cookedData = getCookedData(data);
+      }
       setGridData(cookedData);
       // Initialize history with current data
       setHistory({
@@ -3568,7 +3870,66 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       }
       return;
     }
-  }, [data, propColumns]);
+  }, [data, propColumns, treeData, getDataPath, isChild, getCookedData]);
+  var toggleTreeRowExpand = React.useCallback(function (nodeKey) {
+    setTreeExpandedRows(function (prev) {
+      var _a;
+      return tslib.__assign(tslib.__assign({}, prev), (_a = {}, _a[nodeKey] = !prev[nodeKey], _a));
+    });
+  }, []);
+  // Update: Set initial expanded rows for tree data based on groupDefaultExpanded
+  React.useEffect(function () {
+    if (treeData && gridData && Array.isArray(gridData) && !treeInit) {
+      var initialExpanded_1 = {};
+      var getNodeKey_1 = function (node, parentPath) {
+        var _a;
+        if (parentPath === void 0) {
+          parentPath = [];
+        }
+        var nodeName = typeof node.name === "string" ? node.name : String((_a = node.name) !== null && _a !== void 0 ? _a : "");
+        return tslib.__spreadArray(tslib.__spreadArray([], parentPath, true), [nodeName], false).join("/");
+      };
+      var expandAll_1 = function (nodes, parentPath) {
+        if (parentPath === void 0) {
+          parentPath = [];
+        }
+        nodes.forEach(function (node) {
+          var _a;
+          var nodeName = typeof node.name === "string" ? node.name : String((_a = node.name) !== null && _a !== void 0 ? _a : "");
+          var nodeKey = getNodeKey_1(node, parentPath);
+          if (node.children && node.children.length > 0) {
+            initialExpanded_1[nodeKey] = true;
+            expandAll_1(node.children, tslib.__spreadArray(tslib.__spreadArray([], parentPath, true), [nodeName], false));
+          }
+        });
+      };
+      var expandLevels_1 = function (nodes, levels, parentPath) {
+        if (parentPath === void 0) {
+          parentPath = [];
+        }
+        if (levels <= 0) return;
+        nodes.forEach(function (node) {
+          var _a;
+          var nodeName = typeof node.name === "string" ? node.name : String((_a = node.name) !== null && _a !== void 0 ? _a : "");
+          var nodeKey = getNodeKey_1(node, parentPath);
+          if (node.children && node.children.length > 0) {
+            initialExpanded_1[nodeKey] = true;
+            expandLevels_1(node.children, levels - 1, tslib.__spreadArray(tslib.__spreadArray([], parentPath, true), [nodeName], false));
+          }
+        });
+      };
+      if (groupDefaultExpanded === -1) {
+        expandAll_1(gridData);
+      } else if (groupDefaultExpanded > 0) {
+        expandLevels_1(gridData, groupDefaultExpanded);
+      }
+      setTreeExpandedRows(initialExpanded_1);
+      setTreeInit(true);
+    }
+  }, [treeData, gridData, groupDefaultExpanded, treeInit]);
+  React.useEffect(function () {
+    setTreeInit(false);
+  }, [gridData]);
   // Update filters and trigger debounced update
   var handleFilterChange = React.useCallback(function (field, value) {
     var _a;
@@ -3914,6 +4275,20 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       return newState;
     });
   }, [gridData, getDetailRowData]);
+  React.useEffect(function () {
+    // Update detailData for all expanded rows when gridData changes
+    setDetailData(function (prev) {
+      var updated = {};
+      Object.keys(expandedRows).forEach(function (rowIndexStr) {
+        var rowIndex = Number(rowIndexStr);
+        var row = gridData[rowIndex];
+        if (row && row.children) {
+          updated[rowIndex] = row.children;
+        }
+      });
+      return updated;
+    });
+  }, [gridData, expandedRows]);
   // ----------------------------
   // 8) Row Grouping
   // ----------------------------
@@ -4092,6 +4467,12 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   }, [filteredData, groupedColumns, columns, isServerSide, data]);
   var flattenedRows = React.useMemo(function () {
     var flatList = [];
+    if (treeData && gridData && Array.isArray(gridData)) {
+      // Use the flattenTree helper for tree data
+      return flattenTree(gridData, treeExpandedRows, 0, {
+        current: 0
+      });
+    }
     var dataToRender = filteredData;
     if (!dataToRender || dataToRender.length === 0) {
       return flatList;
@@ -4171,7 +4552,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       });
     }
     return flatList;
-  }, [filteredData, groupedData, expandedGroups, expandedRows, masterDetail, enablePivot, pivotColumns]);
+  }, [filteredData, groupedData, expandedGroups, expandedRows, masterDetail, enablePivot, pivotColumns, treeData, gridData, expandedRows, treeExpandedRows]);
   // Or modify it to only expand on initial load if you want that behavior
   React.useEffect(function () {
     if (groupedData && groupedColumns.length === 1) {
@@ -4203,6 +4584,45 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     useAnimationFrameWithResizeObserver: true,
     overscan: 5
   });
+  // Add this function above your return statement in DataGrid
+  var handleTreeRowDrop = React.useCallback(function (draggedNodeKey, targetNodeKey) {
+    if (!rowDragManaged || !treeData) return;
+    // Prevent dropping onto itself
+    if (draggedNodeKey === targetNodeKey) return;
+    // Prevent dropping into its own descendant
+    var draggedItem = flattenedRows.find(function (item) {
+      return item.type === "data" && "nodeKey" in item && item.nodeKey === draggedNodeKey;
+    });
+    var targetItem = flattenedRows.find(function (item) {
+      return item.type === "data" && "nodeKey" in item && item.nodeKey === targetNodeKey;
+    });
+    if (!draggedItem || !targetItem) return;
+    // Don't allow dropping into a descendant
+    var descendantKeys = getAllDescendantNodeKeys(draggedItem.row, draggedNodeKey.split("/").slice(0, -1));
+    if (descendantKeys.includes(targetNodeKey)) return;
+    // Get source and target paths
+    var sourcePath = draggedNodeKey.split("/");
+    var targetPath = targetNodeKey.split("/");
+    // Move the node in the tree
+    var newTree = moveTreeNode(gridData, sourcePath, targetPath);
+    setGridData(newTree);
+    // Optionally update history for undo/redo
+    setHistory(function (prev) {
+      return {
+        past: tslib.__spreadArray(tslib.__spreadArray([], prev.past, true), [prev.present], false),
+        present: newTree,
+        future: []
+      };
+    });
+    // Call the callback if provided
+    if (onRowDragEnd) {
+      onRowDragEnd({
+        draggedRow: draggedItem.row,
+        targetRow: targetItem.row,
+        newData: newTree
+      });
+    }
+  }, [rowDragManaged, treeData, flattenedRows, gridData, setGridData, setHistory, onRowDragEnd]);
   // ----------------------------
   // 10) Rendering: Flattened Virtual Rows
   // ----------------------------
@@ -4247,6 +4667,54 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     }
     return value ? String(value) : "";
   };
+  var handleTreeRowsDrop = React.useCallback(function (draggedNodeKeys, targetNodeKey) {
+    var _a, _b, _c;
+    if (!rowDragManaged || !treeData) return;
+    if (draggedNodeKeys.includes(targetNodeKey)) return;
+    var newTree = gridData;
+    draggedNodeKeys.forEach(function (draggedNodeKey) {
+      var draggedItem = flattenedRows.find(function (item) {
+        return item.type === "data" && "nodeKey" in item && item.nodeKey === draggedNodeKey;
+      });
+      var targetItem = flattenedRows.find(function (item) {
+        return item.type === "data" && "nodeKey" in item && item.nodeKey === targetNodeKey;
+      });
+      if (!draggedItem || !targetItem) return;
+      var descendantKeys = getAllDescendantNodeKeys(draggedItem.row, draggedNodeKey.split("/").slice(0, -1));
+      if (descendantKeys.includes(targetNodeKey)) return;
+      var sourcePath = draggedNodeKey.split("/");
+      var targetPath = targetNodeKey.split("/");
+      newTree = moveTreeNode(newTree, sourcePath, targetPath);
+    });
+    setGridData(newTree);
+    setHistory(function (prev) {
+      return {
+        past: tslib.__spreadArray(tslib.__spreadArray([], prev.past, true), [prev.present], false),
+        present: newTree,
+        future: []
+      };
+    });
+    if (onRowDragEnd) {
+      var draggedRowsArr = draggedNodeKeys.map(function (key) {
+        var item = flattenedRows.find(function (item) {
+          return item.type === "data" && "nodeKey" in item && item.nodeKey === key;
+        });
+        return item === null || item === void 0 ? void 0 : item.row;
+      }).filter(function (row) {
+        return !!row;
+      });
+      onRowDragEnd({
+        draggedRow: (_a = draggedRowsArr[0]) !== null && _a !== void 0 ? _a : null,
+        // required
+        draggedRows: draggedRowsArr,
+        // optional
+        targetRow: (_c = (_b = flattenedRows.find(function (item) {
+          return item.type === "data" && "nodeKey" in item && item.nodeKey === targetNodeKey;
+        })) === null || _b === void 0 ? void 0 : _b.row) !== null && _c !== void 0 ? _c : null,
+        newData: newTree
+      });
+    }
+  }, [rowDragManaged, treeData, flattenedRows, gridData, setGridData, setHistory, onRowDragEnd]);
   /**
    * Inline helper: Render a single "virtual item" row.
    * We'll handle group vs. data vs. detail row by checking flattenedRows[idx].type.
@@ -4326,11 +4794,24 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       var row_2 = item.row,
         indent_1 = item.indent,
         rowIndex_1 = item.rowIndex;
+      var hasChildren = (row_2 === null || row_2 === void 0 ? void 0 : row_2.children) && Array.isArray(row_2.children) && row_2.children.length > 0;
       var isExpanded = rowIndex_1 !== undefined ? expandedRows[rowIndex_1] : false;
       var expandButton_1 = null;
-      if ((row_2 === null || row_2 === void 0 ? void 0 : row_2.children) && Array.isArray(row_2.children) && row_2.children.length > 0) {
+      if (treeData && hasChildren && item.type === "data") {
+        var nodeKey_1 = item.nodeKey;
         expandButton_1 = /*#__PURE__*/React.createElement("button", {
-          className: "mr-2 focus:outline-none",
+          className: "mr-2 focus:outline-none cursor-pointer",
+          onClick: function () {
+            return toggleTreeRowExpand(nodeKey_1);
+          }
+        }, treeExpandedRows[nodeKey_1] ? (/*#__PURE__*/React.createElement(lucideReact.ChevronDown, {
+          className: "size-4 "
+        })) : (/*#__PURE__*/React.createElement(lucideReact.ChevronRight, {
+          className: "size-4"
+        })));
+      } else if ((row_2 === null || row_2 === void 0 ? void 0 : row_2.children) && Array.isArray(row_2.children) && row_2.children.length > 0) {
+        expandButton_1 = /*#__PURE__*/React.createElement("button", {
+          className: "mr-2 focus:outline-none cursor-pointer",
           onClick: function () {
             return rowIndex_1 !== undefined && toggleRowExpand(rowIndex_1);
           }
@@ -4342,6 +4823,8 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       }
       // Full row editing logic
       var isFullRowEditing_1 = editType === "fullRow" && typeof onRowValueChanged === "function" && typeof onCellValueChanged === "function" && editingRowId === rowIndex_1;
+      // Get the nodeKey if availble - for dragging the selected rows in TREE data
+      var nodeKey = treeData && "nodeKey" in item && typeof item.nodeKey === "string" ? item.nodeKey : undefined;
       return /*#__PURE__*/React.createElement(TableRow, {
         key: virtualRow.key,
         "data-index": virtualRow.index,
@@ -4356,27 +4839,90 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         },
         className: cn({
           "bg-blue-100": rowIndex_1 !== undefined && selectedRows[rowIndex_1],
-          "hover:bg-gray-100": true
+          "hover:bg-gray-100": true,
+          "border-b-[3px] border-indigo-200": item.type === "data" && "nodeKey" in item && dragOverRowKey === item.nodeKey
         }),
         onClick: function () {
           return onRowClick === null || onRowClick === void 0 ? void 0 : onRowClick({
             data: row_2,
             rowIndex: rowIndex_1
           });
+        },
+        onDragLeave: function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragOverRowKey(null);
+        },
+        onDragStart: function (e) {
+          e.stopPropagation();
+          e.dataTransfer.effectAllowed = "move";
+          // We'll use nodeKey as the identifier
+          // Only set if item is a data row and has nodeKey
+          if (item.type === "data" && "nodeKey" in item && typeof item.nodeKey === "string") {
+            // e.dataTransfer.setData("dragNodeKey", item.nodeKey);
+            var selectedNodeKeys = Object.keys(selectedRows).filter(function (key) {
+              return selectedRows[key];
+            });
+            var dragKeys = selectedNodeKeys.length > 0 && selectedNodeKeys.includes(item.nodeKey) ? selectedNodeKeys : [item.nodeKey];
+            e.dataTransfer.setData("dragNodeKeys", JSON.stringify(dragKeys));
+          }
+        },
+        onDrop: function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragOverRowKey(null);
+          var draggedNodeKey = e.dataTransfer.getData("dragNodeKey");
+          if (!draggedNodeKey || !(item.type === "data" && "nodeKey" in item && typeof item.nodeKey === "string") || draggedNodeKey === item.nodeKey) return;
+          handleTreeRowDrop === null || handleTreeRowDrop === void 0 ? void 0 : handleTreeRowDrop(draggedNodeKey, item.nodeKey);
+          var draggedNodeKeysRaw = e.dataTransfer.getData("dragNodeKeys");
+          if (!draggedNodeKeysRaw || !(item.type === "data" && "nodeKey" in item && typeof item.nodeKey === "string")) return;
+          var draggedNodeKeys = JSON.parse(draggedNodeKeysRaw);
+          if (draggedNodeKeys.includes(item.nodeKey)) return;
+          handleTreeRowsDrop === null || handleTreeRowsDrop === void 0 ? void 0 : handleTreeRowsDrop(draggedNodeKeys, item.nodeKey);
+        },
+        // make the row draggable in TREE data where we've a selected
+        draggable: treeData && rowSelection && !!nodeKey && selectedRows[nodeKey],
+        onDragOver: function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (item.type === "data" && "nodeKey" in item && typeof item.nodeKey === "string") {
+            setDragOverRowKey(item.nodeKey);
+          }
         }
       }, rowSelection && (/*#__PURE__*/React.createElement(TableCell, {
         key: "checkbox-cell-".concat(rowIndex_1),
         className: "w-[50px]"
       }, /*#__PURE__*/React.createElement("div", {
         className: "w-[30px] flex justify-center items-center"
-      }, /*#__PURE__*/React.createElement(Checkbox, {
-        checked: rowIndex_1 !== undefined ? !!selectedRows[rowIndex_1] : false,
+      }, /*#__PURE__*/React.createElement(Checkbox
+      // checked={
+      //   rowIndex !== undefined ? !!selectedRows[rowIndex] : false
+      // }
+      , {
+        // checked={
+        //   rowIndex !== undefined ? !!selectedRows[rowIndex] : false
+        // }
+        checked: treeData && rowSelection.treeSelectChildren ? item.type === "data" && "nodeKey" in item && !!selectedRows[item.nodeKey] : rowIndex_1 !== undefined && !!selectedRows[rowIndex_1],
+        // onCheckedChange={(checked: boolean) => {
+        //   handleRowCheckboxChange(rowIndex, checked);
+        // }}
         onCheckedChange: function (checked) {
-          handleRowCheckboxChange(rowIndex_1, checked);
+          if (treeData && rowSelection.treeSelectChildren) {
+            if (item.type === "data" && "nodeKey" in item) {
+              handleTreeRowCheckboxChange(item.nodeKey, checked);
+            }
+          } else {
+            if (rowIndex_1 !== undefined) {
+              handleFlatRowCheckboxChange(rowIndex_1, checked);
+            }
+          }
         },
         onClick: function (e) {
-          e.stopPropagation();
+          return e.stopPropagation();
         },
+        // onClick={(e: { stopPropagation: () => void }) => {
+        //   e.stopPropagation();
+        // }}
         className: "border-1 border-gray-400 cursor-pointer"
       })))), displayColumns.map(function (col, colIndex) {
         var _a;
@@ -4419,6 +4965,41 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         var cellRenderer = "cellRenderer" in col ? col.cellRenderer : undefined;
         var cellValue = row_2 ? getCellValue(row_2, col.field, col) : undefined;
         var isEditing = editingCell && editingCell.rowIndex === rowIndex_1 && editingCell.field === col.field;
+        // Indent first column for treeData
+        if (colIndex === 0 && treeData) {
+          return /*#__PURE__*/React.createElement(TableCell, {
+            key: "".concat(colIndex, "-").concat(col.field),
+            style: tslib.__assign(tslib.__assign({}, getCellWidth(col)), {
+              overflow: "hidden",
+              cursor: col.editable ? "pointer" : "text",
+              textWrap: "initial"
+            })
+          }, /*#__PURE__*/React.createElement("div", {
+            className: "flex items-center w-full transition-all duration-300 ease-in-out",
+            style: {
+              paddingLeft: "".concat((indent_1 || 0) * 20, "px")
+            }
+          }, expandButton_1, rowDragManaged && treeData && (/*#__PURE__*/React.createElement("span", {
+            draggable: true,
+            onDragStart: function (e) {
+              e.stopPropagation();
+              e.dataTransfer.effectAllowed = "move";
+              // We'll use nodeKey as the identifier
+              // Only set if item is a data row and has nodeKey
+              if (item.type === "data" && "nodeKey" in item && typeof item.nodeKey === "string") {
+                e.dataTransfer.setData("dragNodeKey", item.nodeKey);
+              }
+            },
+            className: "cursor-grab mr-2 px-1 py-0.5 rounded hover:bg-gray-200 active:cursor-grabbing",
+            title: "Drag to move",
+            tabIndex: -1,
+            "aria-label": "Drag row"
+          }, /*#__PURE__*/React.createElement(lucideReact.GripHorizontal, {
+            className: "size-4"
+          }))), /*#__PURE__*/React.createElement("span", null, formatCellValue(cellValue, row_2 || {}, col), showChildCount && Array.isArray(row_2 === null || row_2 === void 0 ? void 0 : row_2.children) && row_2.children.length > 0 && (/*#__PURE__*/React.createElement("span", {
+            className: "ml-2 text-xs text-gray-500"
+          }, "(", row_2.children.length, ")")))));
+        }
         // If it's the first column and there's master detail, show expand button
         if (colIndex === 0 && masterDetail) {
           return /*#__PURE__*/React.createElement(TableCell, {
@@ -4552,6 +5133,8 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
           var result = col.tooltipField && tooltipValue != null && tooltipValue !== "" ? tooltipValue : col.rowGroup ? "" : formatCellValue(cellValue, row_2 || {}, col);
           return result != null ? String(result) : ""; // Ensure it's a valid string or ReactNode
         }()))) : formatCellValue(cellValue, row_2 || {}, col))));
+      }), addRowConfig && /*#__PURE__*/React.createElement(TableCell, {
+        className: "w-[50px]"
       }));
     }
     // 3) Detail Row
@@ -4599,7 +5182,8 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       }, /*#__PURE__*/React.createElement(DataGrid, {
         columnDefs: detailGridOptions,
         data: detailData[parentIndex],
-        isChild: true
+        isChild: true,
+        parentRow: item.parentRow
       }))) : (/*#__PURE__*/React.createElement("div", {
         className: "h-full w-full flex items-center justify-center"
       }, "Loading detail data...")))));
@@ -4667,18 +5251,9 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       }, index === 0 ? "Total" : "")));
     })))));
   };
-  /**
-   * Handles the selection and deselection of a single row in the DataGrid.
-   * Updates the selectedRows state based on the checkbox state.
-   */
-  var handleRowCheckboxChange = function (rowIndex, checked) {
-    if (rowIndex === undefined) return;
+  // Handler for flat (non-tree) row selection
+  var handleFlatRowCheckboxChange = function (rowIndex, checked) {
     setSelectedRows(function (prev) {
-      var _a;
-      if (rowSelection && rowSelection.mode === "single") {
-        // Only allow one row to be selected at a time
-        return checked ? (_a = {}, _a[rowIndex] = true, _a) : {};
-      }
       var updated = tslib.__assign({}, prev);
       if (checked) {
         updated[rowIndex] = true;
@@ -4705,40 +5280,71 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     }
     if (checked) {
       var allSelected_1 = {};
-      gridData.forEach(function (row, idx) {
-        allSelected_1[idx] = true;
-      });
+      if (treeData && (rowSelection === null || rowSelection === void 0 ? void 0 : rowSelection.treeSelectChildren)) {
+        // Select all nodeKeys for treeData
+        flattenedRows.filter(function (item) {
+          return item.type === "data";
+        }).forEach(function (item) {
+          allSelected_1[item.nodeKey] = true;
+        });
+      } else {
+        // Flat data: select by index
+        gridData.forEach(function (__, idx) {
+          allSelected_1[idx] = true;
+        });
+      }
       setSelectedRows(allSelected_1);
     } else {
       setSelectedRows({});
     }
   };
   // Add useEffect to call onRowSelectionChange when selectedRows changes
+  // Call getSelectedRows callback with selected data
+  // Update the useEffect for getSelectedRows:
   React.useEffect(function () {
     if (rowSelection && typeof (rowSelection === null || rowSelection === void 0 ? void 0 : rowSelection.getSelectedRows) === "function") {
-      var selectedData = Object.entries(selectedRows).filter(function (_a) {
-        var isSelected = _a[1];
-        return isSelected;
-      }).map(function (_a) {
-        var index = _a[0];
-        return data[+index];
-      });
-      rowSelection === null || rowSelection === void 0 ? void 0 : rowSelection.getSelectedRows(selectedData);
+      var selectedData = [];
+      if (treeData && rowSelection.treeSelectChildren) {
+        selectedData = flattenedRows.filter(function (item) {
+          return item.type === "data" && "nodeKey" in item && !!selectedRows[item.nodeKey];
+        }).map(function (item) {
+          return item.row;
+        });
+      } else {
+        selectedData = Object.entries(selectedRows).filter(function (_a) {
+          var isSelected = _a[1];
+          return isSelected;
+        }).map(function (_a) {
+          var index = _a[0];
+          return data[+index] || data.find(function (row) {
+            return row.id === index || row.documentNumber === index;
+          });
+        });
+      }
+      rowSelection === null || rowSelection === void 0 ? void 0 : rowSelection.getSelectedRows(selectedData.filter(Boolean));
     }
-  }, [selectedRows]);
-  var _19 = React.useState(""),
-    search = _19[0],
-    setSearch = _19[1];
-  var _20 = React.useState(false),
-    sidebarOpen = _20[0],
-    setSidebarOpen = _20[1];
+  }, [selectedRows, flattenedRows, treeData, rowSelection, data]);
+  // useEffect(() => {
+  //   if (rowSelection && typeof rowSelection?.getSelectedRows === "function") {
+  //     const selectedData = Object.entries(selectedRows)
+  //       .filter(([, isSelected]) => isSelected)
+  //       .map(([index]) => data[+index]);
+  //     rowSelection?.getSelectedRows(selectedData);
+  //   }
+  // }, [selectedRows]);
+  var _22 = React.useState(""),
+    search = _22[0],
+    setSearch = _22[1];
+  var _23 = React.useState(false),
+    sidebarOpen = _23[0],
+    setSidebarOpen = _23[1];
   // to exit from the editing mode - full row edit mode
   var handleStopEditing = React.useCallback(function () {
     setEditingRowId(null);
     setEditingRowData(null);
   }, [setEditingRowId, setEditingRowData]);
   // to  start editing the second row - full row edit mode
-  var handleEditSecondRow = React.useCallback(function () {
+  React.useCallback(function () {
     var rowIndex = 1;
     // 2nd row means index 1 (0-based)
     var row = gridData[rowIndex];
@@ -4789,6 +5395,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   React.useEffect(function () {
     if (!addRowConfig) return;
     var handleKeyDown = function (e) {
+      console.log("yes");
       var isCtrlOrMeta = e.ctrlKey || e.metaKey;
       var isPlusKey = e.key === "+" || e.key === "="; // some keyboards require Shift + = for +
       if (isCtrlOrMeta && isPlusKey) {
@@ -4806,24 +5413,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   // Update the main grid container JSX
   return /*#__PURE__*/React.createElement("div", {
     className: "relative w-[100%] h-full"
-  }, editType === "fullRow" && fullRowButtons && (/*#__PURE__*/React.createElement("div", {
-    className: "gap-2 flex items-center mb-2"
-  }, [{
-    title: "Start Editing Line 2",
-    onClick: handleEditSecondRow,
-    hide: (gridData === null || gridData === void 0 ? void 0 : gridData.length) < 2
-  }, {
-    title: "Stop Editing",
-    onClick: handleStopEditing,
-    hide: false
-  }].filter(function (btn) {
-    return !btn.hide;
-  }).map(function (btn) {
-    return /*#__PURE__*/React.createElement("button", {
-      className: "border px-[12px] py-[5px] cursor-pointer text-[12px] rounded-[6px]",
-      onClick: btn.onClick
-    }, btn.title);
-  }))), loading && (/*#__PURE__*/React.createElement("div", {
+  }, loading && (/*#__PURE__*/React.createElement("div", {
     className: "absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-center"
@@ -4832,16 +5422,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     size: 15
   }), /*#__PURE__*/React.createElement("p", {
     className: "mt-4 text-gray-600"
-  }, loadingMessage)))), addRowConfig && (/*#__PURE__*/React.createElement("div", {
-    className: "flex justify-end px-4 py-2"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bg-green-600 cursor-pointer text-white px-4 py-1 hover:bg-green-700 transition rounded-full",
-    onClick: function () {
-      var initial = generateInitialRowData();
-      setNewRowData(initial);
-      setIsAddingRow(true); // explicitly here instead
-    }
-  }, "+ Add New Row"))), enablePivot && setPivotColumns && (/*#__PURE__*/React.createElement(PivotPanel, {
+  }, loadingMessage)))), enablePivot && setPivotColumns && (/*#__PURE__*/React.createElement(PivotPanel, {
     pivotColumns: serverPivoting && serverPivotCols ? serverPivotCols : pivotColumns,
     columns: columns,
     setPivotColumns: serverPivoting && setServerPivotColsFn ? setServerPivotColsFn : setPivotColumns,
@@ -4856,7 +5437,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     ref: scrollParentRef
   }, /*#__PURE__*/React.createElement(Table, {
     ref: tableRef,
-    className: cn("hiddenw-full border-b border-l border-r border-gray-200"),
+    className: cn("w-full border-b border-l border-r border-gray-200"),
     style: {
       tableLayout: tableLayout
     }
@@ -4909,7 +5490,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         onClick: toggleSortByTotalMedals,
         className: "cursor-pointer sticky left-0 z-20 border border-gray-200 px-4 py-2 bg-gray-100 "
       }, "Group", sortDirection === "asc" ? "↑" : sortDirection === "desc" ? "↓" : "")), headerCells);
-    }), /*#__PURE__*/React.createElement("tr", null, combinations.map(function (combo, index) {
+    }), /*#__PURE__*/React.createElement("tr", null, combinations.map(function (_, index) {
       return metrics.map(function (metric) {
         return /*#__PURE__*/React.createElement("th", {
           key: "metric-".concat(index, "-").concat(metric.field),
@@ -4953,7 +5534,21 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-[30px] flex justify-center items-center"
   }, rowSelection.mode === "multiple" && (/*#__PURE__*/React.createElement(Checkbox, {
-    checked: Object.keys(selectedRows).length > 0 && Object.keys(selectedRows).length === gridData.length,
+    checked: treeData && (rowSelection === null || rowSelection === void 0 ? void 0 : rowSelection.treeSelectChildren) ? flattenedRows.filter(function (item) {
+      return item.type === "data" && "nodeKey" in item;
+    }).every(function (item) {
+      return selectedRows[item.nodeKey];
+    }) : Object.keys(selectedRows).length > 0 && Object.keys(selectedRows).length === gridData.length,
+    "data-indeterminate": treeData && (rowSelection === null || rowSelection === void 0 ? void 0 : rowSelection.treeSelectChildren) ? function () {
+      var dataRows = flattenedRows.filter(function (item) {
+        return item.type === "data" && "nodeKey" in item;
+      });
+      return dataRows.some(function (item) {
+        return selectedRows[item.nodeKey];
+      }) && !dataRows.every(function (item) {
+        return selectedRows[item.nodeKey];
+      });
+    }() : Object.keys(selectedRows).length > 0 && Object.keys(selectedRows).length < gridData.length,
     onCheckedChange: handleHeaderCheckboxChange,
     className: "border-1 border-gray-400 cursor-pointer"
   }))))), (!enablePivot || !serverPivoting && pivotColumns.length < 1 || serverPivoting && !(serverPivotCols === null || serverPivotCols === void 0 ? void 0 : serverPivotCols.length)) && displayColumns.map(function (col, ind) {
@@ -5036,18 +5631,42 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         return handleFilterChange(col.field, "");
       }
     }))))))));
-  }))), /*#__PURE__*/React.createElement(TableBody, null, newRowData && isAddingRow && (/*#__PURE__*/React.createElement(TableRow, {
+  }), addRowConfig && (/*#__PURE__*/React.createElement(TableHead, {
+    className: "w-[50px]",
+    style: {
+      paddingLeft: "12px",
+      paddingTop: "6px"
+    }
+  }, /*#__PURE__*/React.createElement(Tooltip, null, /*#__PURE__*/React.createElement(TooltipTrigger, {
+    asChild: true
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "cursor-pointer text-white text-lg hover:bg-[#d3d3d3] transition rounded-md",
+    style: {
+      color: "#a0a2a4"
+    },
+    onClick: function () {
+      var initial = generateInitialRowData();
+      setNewRowData(initial);
+      setIsAddingRow(true); // explicitly here instead
+    }
+  }, /*#__PURE__*/React.createElement(lucideReact.Plus, {
+    strokeWidth: 1.5
+  }))), /*#__PURE__*/React.createElement(TooltipContent, {
+    className: ""
+  }, "+ Add Row")))))), /*#__PURE__*/React.createElement(TableBody, null, newRowData && isAddingRow && (/*#__PURE__*/React.createElement(TableRow, {
     className: "bg-yellow-50"
-  }, displayColumns.filter(function (col) {
-    return !!col.editorType;
-  }) // ✅ only render if editorType exists
-  .map(function (col) {
+  }, rowSelection && (/*#__PURE__*/React.createElement(TableCell, {
+    className: "w-[50px]"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-[30px] flex justify-center items-center"
+  }))), displayColumns.map(function (col) {
     return /*#__PURE__*/React.createElement(TableCell, {
       key: "new-".concat(col.field),
-      className: "border-2 p-0"
+      className: "border-2 py-1"
     }, /*#__PURE__*/React.createElement(CellEditor, {
       columnDef: {
-        editorType: col.editorType,
+        editorType: col.editorType || "text",
+        // Default to "text"
         editorParams: col.editorParams
       },
       value: newRowData[col.field],
@@ -5067,7 +5686,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
             return value !== null && value !== undefined && value !== "";
           });
           if (isValid) {
-            (_a = addRowConfig === null || addRowConfig === void 0 ? void 0 : addRowConfig.onAdd) === null || _a === void 0 ? void 0 : _a.call(addRowConfig, newRowData);
+            (_a = addRowConfig === null || addRowConfig === void 0 ? void 0 : addRowConfig.onAdd) === null || _a === void 0 ? void 0 : _a.call(addRowConfig, newRowData, parentRow);
             setNewRowData({});
             setIsAddingRow(false);
           } else {
@@ -5082,7 +5701,20 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         }
       }
     }));
-  })))), (!enablePivot || !serverPivoting && pivotColumns.length < 1 || serverPivoting && !(serverPivotCols === null || serverPivotCols === void 0 ? void 0 : serverPivotCols.length)) && (/*#__PURE__*/React.createElement(TableBody, {
+  }), addRowConfig && (/*#__PURE__*/React.createElement(TableCell, {
+    className: "flex justify-center items-center"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "cursor-pointer text-white text-lg transition rounded-md",
+    style: {
+      color: "red"
+    },
+    onClick: function () {
+      setNewRowData({});
+      setIsAddingRow(false);
+    }
+  }, /*#__PURE__*/React.createElement(lucideReact.SquareX, {
+    strokeWidth: 1.5
+  }))))))), (!enablePivot || !serverPivoting && pivotColumns.length < 1 || serverPivoting && !(serverPivotCols === null || serverPivotCols === void 0 ? void 0 : serverPivotCols.length)) && (/*#__PURE__*/React.createElement(TableBody, {
     style: {
       height: "".concat(rowVirtualizer.getTotalSize(), "px"),
       position: "relative"

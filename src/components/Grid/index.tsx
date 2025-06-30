@@ -215,7 +215,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
     // 🧠 Automatically filter when columnDefs or _aggCols change
 
-    const [selectedAggFn, setSelectedAggFn] = useState<string>("sum");
+    const [selectedAggFn] = useState<string>("sum");
 
     // drag and drop of the column while applying agg
     const handleAggDrop = (e: React.DragEvent) => {
@@ -1922,18 +1922,18 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               e.preventDefault();
               e.stopPropagation();
               setDragOverRowKey(null);
-              // const draggedNodeKey = e.dataTransfer.getData("dragNodeKey");
-              // if (
-              //   !draggedNodeKey ||
-              //   !(
-              //     item.type === "data" &&
-              //     "nodeKey" in item &&
-              //     typeof item.nodeKey === "string"
-              //   ) ||
-              //   draggedNodeKey === item.nodeKey
-              // )
-              //   return;
-              // handleTreeRowDrop?.(draggedNodeKey, item.nodeKey);
+              const draggedNodeKey = e.dataTransfer.getData("dragNodeKey");
+              if (
+                !draggedNodeKey ||
+                !(
+                  item.type === "data" &&
+                  "nodeKey" in item &&
+                  typeof item.nodeKey === "string"
+                ) ||
+                draggedNodeKey === item.nodeKey
+              )
+                return;
+              handleTreeRowDrop?.(draggedNodeKey, item.nodeKey);
 
               const draggedNodeKeysRaw = e.dataTransfer.getData("dragNodeKeys");
               if (
@@ -2556,7 +2556,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             });
         } else {
           // Flat data: select by index
-          gridData.forEach((row, idx) => {
+          gridData.forEach((__, idx) => {
             allSelected[idx] = true;
           });
         }
@@ -2594,8 +2594,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               ([index]) =>
                 data[+index] ||
                 data.find(
-                  (row: any, i: number) =>
-                    row.id === index || row.documentNumber === index
+                  (row: any) => row.id === index || row.documentNumber === index
                 )
             );
         }
@@ -2698,7 +2697,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     // Update the main grid container JSX
     return (
       <div className="relative w-[100%] h-full">
-        {editType === "fullRow" && fullRowButtons && (
+        {/* {editType === "fullRow" && fullRowButtons && (
           <div className="gap-2 flex items-center mb-2">
             {[
               {
@@ -2722,7 +2721,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 </button>
               ))}
           </div>
-        )}
+        )} */}
         {/* Loading Overlay */}
         {loading && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
@@ -2863,7 +2862,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
                             {/* Metrics row */}
                             <tr>
-                              {combinations.map((combo, index) =>
+                              {combinations.map((_, index) =>
                                 metrics.map((metric) => (
                                   <th
                                     key={`metric-${index}-${metric.field}`}

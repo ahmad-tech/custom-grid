@@ -1,3 +1,4 @@
+import React from "react";
 export interface GroupObject {
   field: string;
   value: unknown;
@@ -55,9 +56,10 @@ export interface ColumnDef {
   aggSourceFields?: [string, string] | any;
   pivot?: boolean; // whether the column is used for pivoting
 }
-export interface RowSelection {
+export interface IRowSelection {
   mode: "single" | "multiple";
   getSelectedRows?: (data: Record<string, unknown>[]) => void;
+  treeSelectChildren?: boolean; // NEW: select all children when parent is selected (treeData only)
 }
 
 // for filtering
@@ -127,9 +129,15 @@ export interface IServerSidePivoting {
 export interface AddRowConfig {
   /**
    * Callback triggered when a new row is added via the grid UI.
-   * Receives the full row object as argument.
+   * Receives the full row object as the first argument,
+   * and optionally the parent id or parent row as the second argument.
    */
-  onAdd?: (newRow: Record<string, unknown>) => void;
+  onAdd?: (
+    newRow: Record<string, unknown>,
+    parentId?: string | number | null
+    // Or, if you want to pass the full parent row:
+    // parentRow?: Record<string, unknown> | null
+  ) => void;
 }
 
 export interface DataGridProps {
@@ -163,7 +171,7 @@ export interface DataGridProps {
     data: Record<string, unknown>;
     rowIndex: number;
   }) => void;
-  rowSelection?: RowSelection;
+  rowSelection?: IRowSelection;
 
   // for sorting
   onSortChange?: (sortModel: SortModelType) => void;
@@ -182,10 +190,6 @@ export interface DataGridProps {
 
   serverPivoting?: IServerSidePivoting;
 
-  // Configuration for adding a new row inline.
-
-  addRowConfig?: AddRowConfig;
-
   // for full row editing
   editType?: "fullRow" | "cell";
   onRowValueChanged?: (params: { data: Record<string, unknown> }) => void;
@@ -195,9 +199,40 @@ export interface DataGridProps {
     value: unknown;
   }) => void;
   fullRowButtons?: boolean;
+
+  // for TREE Data
+  treeData?: boolean;
+  groupDefaultExpanded?: number; // -1 = all expanded, 0 = none, 1 = first, etc.
+  getDataPath?: (data: Record<string, unknown>) => string[];
+  treeDataChildrenField?: TreeDataChildrenFieldType; // don't format the data if it's true as the data will be in the children like structure
+
+  /**
+   * If true, enables row dragging for tree data.
+   * Should be set on the column definition as well.
+   */
+  rowDragManaged?: boolean;
+
+  showChildCount?: boolean; //to show the number of children in the row
+
+  /**
+   * Callback fired when a row drag ends.
+   * Receives an object with the dragged row, target row, and the new data array.
+   */
+  onRowDragEnd?: (params: {
+    draggedRow: Record<string, unknown>;
+    targetRow: Record<string, unknown> | null;
+    newData: Record<string, unknown>[];
+    draggedRows?: Record<string, unknown>[];
+  }) => void;
+
+  parentRow?: any;
 }
 
+export type TreeDataChildrenFieldType = "children" | "path" | "parentId";
+
 export interface ColumnDefProps {
+  // Configuration for adding a new row inline.
+  addRowConfig?: AddRowConfig;
   tableLayout?: "fixed" | "auto";
   columns?: ColumnDef[];
   masterDetail?: boolean;
