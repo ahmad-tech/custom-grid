@@ -160,27 +160,31 @@ function Checkbox(_a) {
 
 var Input = /*#__PURE__*/React__namespace.forwardRef(function (_a, ref) {
   var className = _a.className,
-    type = _a.type,
+    _b = _a.type,
+    type = _b === void 0 ? "text" : _b,
     props = tslib.__rest(_a, ["className", "type"]);
   return /*#__PURE__*/React__namespace.createElement("input", tslib.__assign({
     type: type,
+    ref: ref,
     "data-slot": "input",
-    className: cn("file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm", "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive", className),
-    ref: ref
+    className: cn("file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm", "focus-visible:ring-[1px]", "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive", className)
   }, props));
 });
 Input.displayName = "Input";
 
+// Root
 function Select(props) {
   return /*#__PURE__*/React__namespace.createElement(SelectPrimitive__namespace.Root, tslib.__assign({
     "data-slot": "select"
   }, props));
 }
+// Group
 function SelectGroup(props) {
   return /*#__PURE__*/React__namespace.createElement(SelectPrimitive__namespace.Group, tslib.__assign({
     "data-slot": "select-group"
   }, props));
 }
+// Value
 function SelectValue(props) {
   return /*#__PURE__*/React__namespace.createElement(SelectPrimitive__namespace.Value, tslib.__assign({
     "data-slot": "select-value"
@@ -229,6 +233,7 @@ function SelectItem(_a) {
     className: "size-4"
   }))), /*#__PURE__*/React__namespace.createElement(SelectPrimitive__namespace.ItemText, null, children));
 }
+// Scroll Up
 function SelectScrollUpButton(_a) {
   var className = _a.className,
     props = tslib.__rest(_a, ["className"]);
@@ -239,6 +244,7 @@ function SelectScrollUpButton(_a) {
     className: "size-4"
   }));
 }
+// Scroll Down
 function SelectScrollDownButton(_a) {
   var className = _a.className,
     props = tslib.__rest(_a, ["className"]);
@@ -291,11 +297,13 @@ var Button = /*#__PURE__*/React__namespace.forwardRef(function (_a, ref) {
 });
 Button.displayName = "Button";
 
+// Popover Root
 function Popover(props) {
   return /*#__PURE__*/React__namespace.createElement(PopoverPrimitive__namespace.Root, tslib.__assign({
     "data-slot": "popover"
   }, props));
 }
+// Popover Trigger
 function PopoverTrigger(props) {
   return /*#__PURE__*/React__namespace.createElement(PopoverPrimitive__namespace.Trigger, tslib.__assign({
     "data-slot": "popover-trigger"
@@ -312,7 +320,7 @@ function PopoverContent(_a) {
     "data-slot": "popover-content",
     align: align,
     sideOffset: sideOffset,
-    className: cn("bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 origin-[--radix-popover-content-transform-origin] rounded-md border p-4 shadow-md outline-hidden", className)
+    className: cn("bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-md border p-4 shadow-md outline-hidden", className)
   }, props)));
 }
 
@@ -1287,67 +1295,67 @@ function SimpleTimePicker(_a) {
   var display = React.useMemo(function () {
     return dateFns.format(value, use12HourFormat ? "hh:mm:ss a" : "HH:mm:ss");
   }, [value, use12HourFormat]);
-  return /*#__PURE__*/React__namespace.createElement(Popover, {
+  return /*#__PURE__*/React.createElement(Popover, {
     open: open,
     onOpenChange: setOpen,
     modal: modal
-  }, /*#__PURE__*/React__namespace.createElement(PopoverTrigger, {
+  }, /*#__PURE__*/React.createElement(PopoverTrigger, {
     asChild: true
-  }, /*#__PURE__*/React__namespace.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     role: "combobox",
     "aria-expanded": open,
     className: cn("flex h-9 px-3 items-center justify-between cursor-pointer font-normal border border-input rounded-md text-sm shadow-sm", disabled && "opacity-50 cursor-not-allowed"),
     tabIndex: 0
-  }, /*#__PURE__*/React__namespace.createElement(lucideReact.Clock, {
+  }, /*#__PURE__*/React.createElement(lucideReact.Clock, {
     className: "mr-2 size-4"
-  }), display, /*#__PURE__*/React__namespace.createElement(lucideReact.ChevronDownIcon, {
+  }), display, /*#__PURE__*/React.createElement(lucideReact.ChevronDownIcon, {
     className: "ml-2 size-4 shrink-0 opacity-50"
-  }))), /*#__PURE__*/React__namespace.createElement(PopoverContent, {
+  }))), /*#__PURE__*/React.createElement(PopoverContent, {
     className: "p-0",
     side: "top"
-  }, /*#__PURE__*/React__namespace.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "flex-col gap-2 p-2"
-  }, /*#__PURE__*/React__namespace.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "flex h-56 grow"
-  }, /*#__PURE__*/React__namespace.createElement(ScrollArea, {
+  }, /*#__PURE__*/React.createElement(ScrollArea, {
     className: "h-full flex-grow"
-  }, /*#__PURE__*/React__namespace.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "flex grow flex-col items-stretch overflow-y-auto pe-2 pb-48"
   }, hours.map(function (v) {
-    return /*#__PURE__*/React__namespace.createElement("div", {
+    return /*#__PURE__*/React.createElement("div", {
       ref: v.value === hour ? hourRef : undefined,
       key: v.value
-    }, /*#__PURE__*/React__namespace.createElement(TimeItem, {
+    }, /*#__PURE__*/React.createElement(TimeItem, {
       option: v,
       selected: v.value === hour,
       onSelect: onHourChange,
       disabled: v.disabled,
       className: "h-8"
     }));
-  }))), /*#__PURE__*/React__namespace.createElement(ScrollArea, {
+  }))), /*#__PURE__*/React.createElement(ScrollArea, {
     className: "h-full flex-grow"
-  }, /*#__PURE__*/React__namespace.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "flex grow flex-col items-stretch overflow-y-auto pe-2 pb-48"
   }, minutes.map(function (v) {
-    return /*#__PURE__*/React__namespace.createElement("div", {
+    return /*#__PURE__*/React.createElement("div", {
       ref: v.value === minute ? minuteRef : undefined,
       key: v.value
-    }, /*#__PURE__*/React__namespace.createElement(TimeItem, {
+    }, /*#__PURE__*/React.createElement(TimeItem, {
       option: v,
       selected: v.value === minute,
       onSelect: onMinuteChange,
       disabled: v.disabled,
       className: "h-8"
     }));
-  }))), /*#__PURE__*/React__namespace.createElement(ScrollArea, {
+  }))), /*#__PURE__*/React.createElement(ScrollArea, {
     className: "h-full flex-grow"
-  }, /*#__PURE__*/React__namespace.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "flex grow flex-col items-stretch overflow-y-auto pe-2 pb-48"
   }, seconds.map(function (v) {
-    return /*#__PURE__*/React__namespace.createElement("div", {
+    return /*#__PURE__*/React.createElement("div", {
       ref: v.value === second ? secondRef : undefined,
       key: v.value
-    }, /*#__PURE__*/React__namespace.createElement(TimeItem, {
+    }, /*#__PURE__*/React.createElement(TimeItem, {
       option: v,
       selected: v.value === second,
       onSelect: function (v) {
@@ -1356,12 +1364,12 @@ function SimpleTimePicker(_a) {
       className: "h-8",
       disabled: v.disabled
     }));
-  }))), use12HourFormat && (/*#__PURE__*/React__namespace.createElement(ScrollArea, {
+  }))), use12HourFormat && (/*#__PURE__*/React.createElement(ScrollArea, {
     className: "h-full flex-grow"
-  }, /*#__PURE__*/React__namespace.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "flex grow flex-col items-stretch overflow-y-auto pe-2"
   }, ampmOptions.map(function (v) {
-    return /*#__PURE__*/React__namespace.createElement(TimeItem, {
+    return /*#__PURE__*/React.createElement(TimeItem, {
       key: v.value,
       option: v,
       selected: v.value === ampm,
@@ -1369,9 +1377,9 @@ function SimpleTimePicker(_a) {
       className: "h-8",
       disabled: v.disabled
     });
-  }))))), /*#__PURE__*/React__namespace.createElement("div", {
+  }))))), /*#__PURE__*/React.createElement("div", {
     className: "flex flex-row-reverse items-center justify-between"
-  }, /*#__PURE__*/React__namespace.createElement(Button, {
+  }, /*#__PURE__*/React.createElement(Button, {
     className: "ms-2 h-7 px-2",
     onClick: function () {
       onSubmit === null || onSubmit === void 0 ? void 0 : onSubmit(buildTime({
@@ -1392,18 +1400,18 @@ var TimeItem = function (_a) {
     onSelect = _a.onSelect,
     className = _a.className,
     disabled = _a.disabled;
-  return /*#__PURE__*/React__namespace.createElement(Button, {
+  return /*#__PURE__*/React.createElement(Button, {
     variant: "ghost",
     className: cn("flex justify-center px-1 pe-2 ps-1", className),
     onClick: function () {
       return onSelect(option);
     },
     disabled: disabled
-  }, /*#__PURE__*/React__namespace.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     className: "w-4"
-  }, selected && /*#__PURE__*/React__namespace.createElement(lucideReact.CheckIcon, {
+  }, selected && /*#__PURE__*/React.createElement(lucideReact.CheckIcon, {
     className: "my-auto size-4"
-  })), /*#__PURE__*/React__namespace.createElement("span", {
+  })), /*#__PURE__*/React.createElement("span", {
     className: "ms-2"
   }, option.label));
 };
@@ -1469,31 +1477,32 @@ function TooltipProvider(_a) {
     delayDuration = _b === void 0 ? 0 : _b,
     props = tslib.__rest(_a, ["delayDuration"]);
   return /*#__PURE__*/React__namespace.createElement(TooltipPrimitive__namespace.Provider, tslib.__assign({
+    "data-slot": "tooltip-provider",
     delayDuration: delayDuration
   }, props));
 }
-function Tooltip(_a) {
-  var children = _a.children,
-    props = tslib.__rest(_a, ["children"]);
-  return /*#__PURE__*/React__namespace.createElement(TooltipProvider, null, /*#__PURE__*/React__namespace.createElement(TooltipPrimitive__namespace.Root, tslib.__assign({}, props), children));
+function Tooltip(props) {
+  return /*#__PURE__*/React__namespace.createElement(TooltipProvider, null, /*#__PURE__*/React__namespace.createElement(TooltipPrimitive__namespace.Root, tslib.__assign({
+    "data-slot": "tooltip"
+  }, props)));
 }
 function TooltipTrigger(props) {
-  return /*#__PURE__*/React__namespace.createElement(TooltipPrimitive__namespace.Trigger, tslib.__assign({}, props));
+  return /*#__PURE__*/React__namespace.createElement(TooltipPrimitive__namespace.Trigger, tslib.__assign({
+    "data-slot": "tooltip-trigger"
+  }, props));
 }
 function TooltipContent(_a) {
   var className = _a.className,
     _b = _a.sideOffset,
-    sideOffset = _b === void 0 ? 8 : _b,
-    _c = _a.side,
-    side = _c === void 0 ? "bottom" : _c,
+    sideOffset = _b === void 0 ? 0 : _b,
     children = _a.children,
-    props = tslib.__rest(_a, ["className", "sideOffset", "side", "children"]);
+    props = tslib.__rest(_a, ["className", "sideOffset", "children"]);
   return /*#__PURE__*/React__namespace.createElement(TooltipPrimitive__namespace.Portal, null, /*#__PURE__*/React__namespace.createElement(TooltipPrimitive__namespace.Content, tslib.__assign({
-    side: side,
+    "data-slot": "tooltip-content",
     sideOffset: sideOffset,
-    className: cn("bg-white text-black border border-gray-200 shadow-lg rounded-md " + "px-3 py-1 text-xs font-normal z-50 w-fit " + "animate-in fade-in-0 zoom-in-95 " + "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 " + "data-[state=closed]:zoom-out-95 " + "data-[side=bottom]:slide-in-from-top-2 " + "data-[side=top]:slide-in-from-bottom-2 " + "data-[side=left]:slide-in-from-right-2 " + "data-[side=right]:slide-in-from-left-2", className)
+    className: cn("bg-primary text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs text-balance", className)
   }, props), children, /*#__PURE__*/React__namespace.createElement(TooltipPrimitive__namespace.Arrow, {
-    className: "fill-white stroke-gray-200 drop-shadow-md"
+    className: "bg-primary fill-primary z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]"
   })));
 }
 
@@ -1547,7 +1556,7 @@ var DateTimeInput = /*#__PURE__*/React__namespace.forwardRef(function (options, 
   var formatStr = React__namespace.useMemo(function () {
     return formatProp || "dd/MM/yyyy-hh:mm aa";
   }, [formatProp]);
-  var inputRef = React.useRef(undefined);
+  var inputRef = React.useRef(null);
   var _a = React.useState([]),
     segments = _a[0],
     setSegments = _a[1];
@@ -1595,7 +1604,6 @@ var DateTimeInput = /*#__PURE__*/React__namespace.forwardRef(function (options, 
     if (!allHasValue) return;
     var date = dateFns.parse(inputStr, formatStr, value || new reactDayPicker.TZDate(new Date(), timezone));
     var year = dateFns.getYear(date);
-    // console.log('inputValue', {allHasValue, validSegments, inputStr, formatStr, date, year});
     if (dateFns.isValid(date) && year > 1900 && year < 2100) {
       return date;
     }
@@ -1604,7 +1612,6 @@ var DateTimeInput = /*#__PURE__*/React__namespace.forwardRef(function (options, 
     var _a;
     if (!inputValue) return;
     if ((value === null || value === void 0 ? void 0 : value.getTime()) !== inputValue.getTime()) {
-      // console.log('inputValueChanged', {formatStr, inputStr, value, inputValue, });
       (_a = options.onChange) === null || _a === void 0 ? void 0 : _a.call(options, inputValue);
     }
   }, [inputValue]);
@@ -1627,7 +1634,9 @@ var DateTimeInput = /*#__PURE__*/React__namespace.forwardRef(function (options, 
         return s.index >= selectionStart;
       }));
       setCurrentSegment(segment);
-      setSelection(inputRef, segment);
+      setSelection({
+        current: inputRef.current
+      }, segment);
     }
   }, [segments]);
   var onSegmentChange = useEventCallback(function (direction) {
@@ -1640,9 +1649,11 @@ var DateTimeInput = /*#__PURE__*/React__namespace.forwardRef(function (options, 
     }) : validSegments.find(function (s) {
       return s.index > curSegment.index;
     });
-    if (segment) {
+    if (segment && inputRef.current) {
       setCurrentSegment(segment);
-      setSelection(inputRef, segment);
+      setSelection({
+        current: inputRef.current
+      }, segment);
     }
   }, [segments, curSegment]);
   var onSegmentNumberValueChange = useEventCallback(function (num) {
@@ -1686,7 +1697,9 @@ var DateTimeInput = /*#__PURE__*/React__namespace.forwardRef(function (options, 
         }
       }
     }
-    shouldNext ? onSegmentChange("right") : setSelection(inputRef, segment);
+    shouldNext ? onSegmentChange("right") : inputRef.current && setSelection({
+      current: inputRef.current
+    }, segment);
   }, [segments, curSegment]);
   var onSegmentPeriodValueChange = useEventCallback(function (key) {
     if ((curSegment === null || curSegment === void 0 ? void 0 : curSegment.type) !== "period") return;
@@ -1711,7 +1724,9 @@ var DateTimeInput = /*#__PURE__*/React__namespace.forwardRef(function (options, 
         return s.index === segment.index;
       });
     }
-    setSelection(inputRef, segment);
+    if (inputRef.current) setSelection({
+      current: inputRef.current
+    }, segment);
   }, [segments, curSegment]);
   var onSegmentValueRemove = useEventCallback(function () {
     if (!curSegment) return;
@@ -1725,7 +1740,9 @@ var DateTimeInput = /*#__PURE__*/React__namespace.forwardRef(function (options, 
       var segment = updatedSegments.find(function (s) {
         return s.index === curSegment.index;
       });
-      setSelection(inputRef, segment);
+      if (inputRef.current) setSelection({
+        current: inputRef.current
+      }, segment);
     } else {
       onSegmentChange("left");
     }
@@ -1733,7 +1750,9 @@ var DateTimeInput = /*#__PURE__*/React__namespace.forwardRef(function (options, 
   var onKeyDown = useEventCallback(function (event) {
     var _a, _b;
     var key = event.key;
-    setSelection(inputRef, curSegment);
+    if (inputRef.current) setSelection({
+      current: inputRef.current
+    }, curSegment);
     if (inputValue) {
       onKeyDownCustom === null || onKeyDownCustom === void 0 ? void 0 : onKeyDownCustom(event);
     }
@@ -2114,7 +2133,7 @@ var CellEditor = function (_a) {
   }, /*#__PURE__*/React.createElement(Editor, tslib.__assign({}, editorProps, additionalProps)))) : (/*#__PURE__*/React.createElement(React.Fragment, null, String(value || "")));
 };
 
-var Switch = function (_a) {
+function Switch(_a) {
   var className = _a.className,
     props = tslib.__rest(_a, ["className"]);
   return /*#__PURE__*/React__namespace.createElement(SwitchPrimitive__namespace.Root, tslib.__assign({
@@ -2124,7 +2143,7 @@ var Switch = function (_a) {
     "data-slot": "switch-thumb",
     className: cn("bg-background dark:data-[state=unchecked]:bg-foreground dark:data-[state=checked]:bg-primary-foreground pointer-events-none block size-4 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0")
   }));
-};
+}
 
 // --- MAIN HOOK ---
 function useCookedData(columnDefs) {
@@ -2505,14 +2524,14 @@ var GroupPanel = function (_a) {
     className: "text-gray-400 text-sm"
   }, "Drag columns here to group")), /*#__PURE__*/React.createElement("div", {
     className: "p-2 flex flex-col gap-2"
-  }, groupedColumns.map(function (field) {
+  }, groupedColumns.map(function (field, ind) {
     var col = columns.find(function (c) {
       return c.field === field;
     });
     return /*#__PURE__*/React.createElement("div", {
+      key: ind,
       className: "flex items-center justify-between bg-gray-700 px-2 py-1 rounded-full"
     }, /*#__PURE__*/React.createElement("span", {
-      key: field,
       className: "flex items-center"
     }, /*#__PURE__*/React.createElement(lucideReact.GripVertical, {
       className: "w-3 h-3 mr-1"
@@ -2527,20 +2546,66 @@ var GroupPanel = function (_a) {
   })));
 };
 
-/**
- * Sidebar component for toggling column visibility, searching columns,
- * and managing row grouping in the DataGrid.
- */
 var ColumnSidebar = function (_a) {
+  var _b;
   var columns = _a.columns,
     setColumns = _a.setColumns,
     search = _a.search,
     setSearch = _a.setSearch,
     showGroupByPanel = _a.showGroupByPanel,
-    _b = _a.groupedColumns,
-    groupedColumns = _b === void 0 ? [] : _b,
+    _c = _a.groupedColumns,
+    groupedColumns = _c === void 0 ? [] : _c,
     setColumnGrouped = _a.setColumnGrouped,
-    handleGroupDrop = _a.handleGroupDrop;
+    handleGroupDrop = _a.handleGroupDrop,
+    _d = _a.enablePivot,
+    enablePivot = _d === void 0 ? false : _d,
+    togglePivot = _a.togglePivot,
+    pivotColumns = _a.pivotColumns,
+    setPivotColumns = _a.setPivotColumns,
+    selectedAggFn = _a.selectedAggFn,
+    columnAggFnMap = _a.columnAggFnMap,
+    setColumnAggFnMap = _a.setColumnAggFnMap,
+    handleAggDrop = _a.handleAggDrop,
+    setAggCols = _a.setAggCols,
+    _e = _a.pivotMode,
+    pivotMode = _e === void 0 ? false : _e;
+  var aggregationOptions = ["sum", "min", "max", "count", "avg"];
+  var aggColumns = React.useMemo(function () {
+    return columns.filter(function (item) {
+      return item.aggFunc && !item.pivot && item.type === "number" && (columnAggFnMap === null || columnAggFnMap === void 0 ? void 0 : columnAggFnMap[item.field]);
+    });
+  }, [columns, columnAggFnMap]);
+  // Helper function to remove column from aggregation
+  var removeFromAggregation = function (columnField) {
+    setColumnAggFnMap === null || setColumnAggFnMap === void 0 ? void 0 : setColumnAggFnMap(function (prev) {
+      var updated = tslib.__assign({}, prev);
+      delete updated[columnField];
+      // Convert to array for aggCols
+      var newAggCols = Object.entries(updated).map(function (_a) {
+        var field = _a[0],
+          aggFunc = _a[1];
+        return {
+          field: field,
+          aggFunc: aggFunc
+        };
+      });
+      setAggCols === null || setAggCols === void 0 ? void 0 : setAggCols(newAggCols);
+      return updated;
+    });
+  };
+  React.useEffect(function () {
+    if (!setColumnAggFnMap) return;
+    setColumnAggFnMap(function (prev) {
+      var updatedMap = tslib.__assign({}, prev);
+      columns.forEach(function (col) {
+        var _a;
+        if (((_a = col.type) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "number" && col.field !== "year" && col.visible !== false && !(col.field in updatedMap)) {
+          updatedMap[col.field] = selectedAggFn || "sum";
+        }
+      });
+      return updatedMap;
+    });
+  }, [columns, selectedAggFn]);
   return /*#__PURE__*/React.createElement("aside", {
     style: {
       backgroundColor: "#1f2937",
@@ -2550,11 +2615,172 @@ var ColumnSidebar = function (_a) {
       width: "280px",
       display: "flex",
       flexDirection: "column",
-      height: "480px",
+      maxHeight: "780px",
       overflowY: "auto",
       overflowX: "hidden"
     }
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "0.75rem 1rem",
+      borderBottom: "1px solid #353945"
+    },
+    className: "flex flex-col gap-2 items-center cursor-pointer"
+  }, pivotMode && (/*#__PURE__*/React.createElement("div", {
+    className: "w-full border-b-[1px] pb-1 border-[#353945]"
+  }, /*#__PURE__*/React.createElement(Checkbox, {
+    className: undefined,
+    style: {
+      borderWidth: 1,
+      borderColor: "#9ca3af",
+      cursor: "pointer"
+    },
+    checked: enablePivot,
+    onCheckedChange: togglePivot
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: "0.5rem"
+    }
+  }, "Pivot Mode"))), /*#__PURE__*/React.createElement("div", {
+    className: "w-full",
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "0.1rem",
+      maxHeight: "15rem",
+      overflowY: "auto"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "max-h-[450px] overflow-auto hide-scrollbar"
+  }, (_b = columns.filter(function (col) {
+    return col.headerName.toLowerCase().includes(search.toLowerCase());
+  })) === null || _b === void 0 ? void 0 : _b.map(function (col) {
+    var _a;
+    var isDraggable = ((_a = col.type) === null || _a === void 0 ? void 0 : _a.toLowerCase()) === "number";
+    return /*#__PURE__*/React.createElement("div", {
+      key: col.field,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem"
+      },
+      draggable: isDraggable,
+      onDragStart: function (e) {
+        // e.dataTransfer.setData("text/plain", col.field);
+        e.dataTransfer.setData("text/plain", col.field); // optional for browser preview
+        e.dataTransfer.setData("columnField", col.field); // used in your custom drop logic
+      }
+    }, /*#__PURE__*/React.createElement(Checkbox, {
+      checked: col.visible !== false,
+      onCheckedChange: function (checked) {
+        setColumns(function (cols) {
+          return cols.map(function (c) {
+            return c.field === col.field ? tslib.__assign(tslib.__assign({}, c), {
+              visible: checked
+            }) : c;
+          });
+        });
+        // Remove from pivotColumns if hiding
+        if (!checked && setPivotColumns && pivotColumns) {
+          setPivotColumns(pivotColumns.filter(function (f) {
+            return f !== col.field;
+          }));
+        }
+        // Remove from aggregation if it exists
+        if (columnAggFnMap === null || columnAggFnMap === void 0 ? void 0 : columnAggFnMap[col.field]) {
+          removeFromAggregation(col.field);
+        }
+        // Remove from groupedColumns if hiding
+        if (!checked && setColumnGrouped && groupedColumns.includes(col.field)) {
+          setColumnGrouped(col.field, false);
+          setColumns(function (cols) {
+            return cols.map(function (c) {
+              return c.field === col.field ? tslib.__assign(tslib.__assign({}, c), {
+                visible: checked
+              }) : c;
+            });
+          });
+        }
+      },
+      style: {
+        borderWidth: 1,
+        borderColor: "#9ca3af",
+        cursor: "pointer"
+      },
+      className: undefined
+    }), /*#__PURE__*/React.createElement(lucideReact.GripVertical, {
+      style: {
+        width: "1rem",
+        height: "1rem",
+        color: "#9ca3af",
+        cursor: "move"
+      }
+    }), /*#__PURE__*/React.createElement("span", {
+      className: ""
+    }, col.headerName));
+  })), enablePivot && (/*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "mt-4",
+    style: {
+      // marginBottom: "0.5rem",
+      display: "flex",
+      alignItems: "center",
+      gap: "0.5rem"
+    }
+  }, /*#__PURE__*/React.createElement(lucideReact.Sigma, {
+    style: {
+      width: "1rem"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 600
+    }
+  }, "Values")), /*#__PURE__*/React.createElement("div", {
+    className: "min-h-[40px] hide-scrollbar scroll-smooth overflow-y-scroll border border-dashed border-[#3a3d45] rounded p-2 bg-[#232733]",
+    onDragOver: function (e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    },
+    onDrop: handleAggDrop
+  }, aggColumns && aggColumns.length > 0 ? (/*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col gap-2"
+  }, aggColumns.map(function (col) {
+    var aggFn = (columnAggFnMap === null || columnAggFnMap === void 0 ? void 0 : columnAggFnMap[col.field]) || "sum";
+    return /*#__PURE__*/React.createElement("div", {
+      key: col.field,
+      className: "flex justify-between items-center px-2 py-1 bg-[#1f2937] border border-[#353945] rounded"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "w-[50%] flex justify-between items-center gap-2 text-sm text-white"
+    }, col.headerName || col.field), /*#__PURE__*/React.createElement("div", {
+      className: " w-[40%] flex items-center justify-end"
+    }, /*#__PURE__*/React.createElement("select", {
+      className: "py-1 pl-2",
+      value: aggFn,
+      onChange: function (e) {
+        setColumnAggFnMap === null || setColumnAggFnMap === void 0 ? void 0 : setColumnAggFnMap(function (prev) {
+          var _a;
+          return tslib.__assign(tslib.__assign({}, prev), (_a = {}, _a[col.field] = e.target.value, _a));
+        });
+      },
+      style: {
+        backgroundColor: "#232733",
+        border: "1px solid #353945",
+        borderRadius: "0.25rem",
+        outline: "none",
+        fontSize: "0.75rem"
+      }
+    }, aggregationOptions.map(function (option) {
+      return /*#__PURE__*/React.createElement("option", {
+        key: option,
+        value: option
+      }, option);
+    })), /*#__PURE__*/React.createElement("button", {
+      className: "text-red-400 text-xs ml-2 cursor-pointer",
+      onClick: function () {
+        return removeFromAggregation(col.field);
+      }
+    }, "\u2715")));
+  }))) : (/*#__PURE__*/React.createElement("span", {
+    className: "text-gray-400 text-sm"
+  }, "Drag columns here for aggregation"))))))), !columnAggFnMap && !setColumnAggFnMap && (/*#__PURE__*/React.createElement("div", {
     style: {
       padding: "0.75rem 1rem",
       borderBottom: "1px solid #353945"
@@ -2567,6 +2793,7 @@ var ColumnSidebar = function (_a) {
       marginBottom: "0.75rem"
     }
   }, /*#__PURE__*/React.createElement(Checkbox, {
+    className: undefined,
     style: {
       borderWidth: 1,
       borderColor: "#9ca3af",
@@ -2583,8 +2810,7 @@ var ColumnSidebar = function (_a) {
           });
         });
       });
-    },
-    className: undefined
+    }
   }), /*#__PURE__*/React.createElement("input", {
     type: "text",
     placeholder: "Search...",
@@ -2620,6 +2846,7 @@ var ColumnSidebar = function (_a) {
         gap: "0.5rem"
       }
     }, /*#__PURE__*/React.createElement(Checkbox, {
+      className: undefined,
       checked: col.visible !== false,
       onCheckedChange: function (checked) {
         return setColumns(function (cols) {
@@ -2634,8 +2861,7 @@ var ColumnSidebar = function (_a) {
         borderWidth: 1,
         borderColor: "#9ca3af",
         cursor: "pointer"
-      },
-      className: undefined
+      }
     }), /*#__PURE__*/React.createElement(lucideReact.GripVertical, {
       style: {
         width: "1rem",
@@ -2644,7 +2870,7 @@ var ColumnSidebar = function (_a) {
         cursor: "move"
       }
     }), /*#__PURE__*/React.createElement("span", null, col.headerName));
-  }))), showGroupByPanel && setColumnGrouped && handleGroupDrop && (/*#__PURE__*/React.createElement("div", {
+  })))), showGroupByPanel && setColumnGrouped && handleGroupDrop && (/*#__PURE__*/React.createElement("div", {
     style: {
       padding: "0.75rem 1rem",
       borderBottom: "1px solid #353945",
@@ -2675,7 +2901,263 @@ var ColumnSidebar = function (_a) {
   }))));
 };
 
+var PivotPanel = function (_a) {
+  var pivotColumns = _a.pivotColumns,
+    columns = _a.columns,
+    setPivotColumns = _a.setPivotColumns,
+    handlePivotDrop = _a.handlePivotDrop;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap- border p-1 bg-gray-50 py-2",
+    onDragOver: function (e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+    },
+    onDrop: handlePivotDrop
+  }, pivotColumns.length > 0 && (/*#__PURE__*/React.createElement("div", {
+    className: "p-2 flex gap-2 max-w-full"
+  }, pivotColumns.map(function (field) {
+    var col = columns.find(function (c) {
+      return c.field === field;
+    });
+    return /*#__PURE__*/React.createElement("div", {
+      key: field,
+      className: "table-row-pop flex items-center justify-between bg-gray-300 px-2 rounded-full"
+    }, /*#__PURE__*/React.createElement("span", {
+      key: field,
+      className: "flex items-center"
+    }, /*#__PURE__*/React.createElement(lucideReact.GripVertical, {
+      className: "size-3 mr-1"
+    }), col === null || col === void 0 ? void 0 : col.headerName), /*#__PURE__*/React.createElement("button", {
+      onClick: function () {
+        return setPivotColumns(pivotColumns.filter(function (f) {
+          return f !== field;
+        }));
+      },
+      className: "ml-1 hover:bg-gray-600 rounded-full p-1 cursor-pointer"
+    }, /*#__PURE__*/React.createElement(lucideReact.X, {
+      className: "h-3 w-3"
+    })));
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "rounded flex flex-wrap gap-2 items-center max-w-full justify-start"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-gray-400 text-sm "
+  }, "Drag here to set column labels")));
+};
+
+// Handles how each aggregation function works
+var applyPivotAgg = function (aggFunc, current, value) {
+  switch (aggFunc) {
+    case "sum":
+      return (current || 0) + value;
+    case "min":
+      return current !== undefined ? Math.min(current, value) : value;
+    case "max":
+      return current !== undefined ? Math.max(current, value) : value;
+    case "count":
+      return (current || 0) + 1;
+    default:
+      return value;
+  }
+};
+// Main pivot and aggregation function
+function pivotAndAggregateByGroup(data, groupBy, pivotColumns, columnDefs) {
+  var allowedNumericFields = new Set(tslib.__spreadArray(["year"], columnDefs.map(function (def) {
+    return def.field;
+  }), true));
+  // Clean and filter numeric fields
+  var cleanedData = data.map(function (row) {
+    var newRow = {};
+    for (var _i = 0, _a = Object.entries(row); _i < _a.length; _i++) {
+      var _b = _a[_i],
+        key = _b[0],
+        value = _b[1];
+      var isNumeric = typeof value === "number";
+      if (!isNumeric || allowedNumericFields.has(key)) {
+        newRow[key] = value;
+      }
+    }
+    return newRow;
+  });
+  var result = [];
+  var groupMap = new Map();
+  var groupByValues = Array.from(new Set(cleanedData.map(function (row) {
+    return row[groupBy];
+  })));
+  var pivotValuesMap = {};
+  pivotColumns.forEach(function (col) {
+    pivotValuesMap[col] = new Set(cleanedData.map(function (row) {
+      return row[col];
+    }));
+  });
+  var allCombinations = [];
+  // Recursively create all combinations of pivot columns
+  function generateCombinations(keys, prefix) {
+    var _a;
+    if (prefix === void 0) {
+      prefix = {};
+    }
+    if (keys.length === 0) {
+      allCombinations.push(prefix);
+      return;
+    }
+    var first = keys[0],
+      rest = keys.slice(1);
+    for (var _i = 0, _b = pivotValuesMap[first]; _i < _b.length; _i++) {
+      var val = _b[_i];
+      generateCombinations(rest, tslib.__assign(tslib.__assign({}, prefix), (_a = {}, _a[first] = val, _a)));
+    }
+  }
+  generateCombinations(pivotColumns);
+  // Main aggregation loop
+  cleanedData.forEach(function (row) {
+    var _a;
+    var groupValue = row[groupBy];
+    var groupKey = String(groupValue);
+    var pivotKey = pivotColumns.map(function (key) {
+      return row[key];
+    }).join("||");
+    // Initialize group entry
+    if (!groupMap.has(groupKey)) {
+      groupMap.set(groupKey, {
+        groupValue: groupValue,
+        childrenMap: new Map(),
+        totalAggregations: {},
+        avgTracking: {},
+        totalMedalsRaw: 0
+      });
+    }
+    var groupEntry = groupMap.get(groupKey);
+    var rawMedalSum = 0;
+    columnDefs.forEach(function (col) {
+      var field = col.field,
+        aggFunc = col.aggFunc;
+      var rawValue = Number(row[field]) || 0;
+      if (aggFunc === "avg") {
+        // Track both sum and count for averaging
+        if (!groupEntry.avgTracking[field]) {
+          groupEntry.avgTracking[field] = {
+            sum: 0,
+            count: 0
+          };
+        }
+        groupEntry.avgTracking[field].sum += rawValue;
+        groupEntry.avgTracking[field].count += 1;
+        rawMedalSum += rawValue;
+      } else {
+        var isCount = aggFunc === "count";
+        var value = isCount ? 1 : rawValue;
+        groupEntry.totalAggregations[field] = applyPivotAgg(aggFunc, groupEntry.totalAggregations[field], value);
+        // Always add value to rawMedalSum, even for count
+        rawMedalSum += value;
+      }
+    });
+    groupEntry.totalMedalsRaw += rawMedalSum;
+    // Populate pivoted row (childrenMap)
+    if (!groupEntry.childrenMap.has(pivotKey)) {
+      var newRow_1 = tslib.__assign((_a = {}, _a[groupBy] = groupValue, _a), Object.fromEntries(pivotColumns.map(function (key) {
+        return [key, row[key]];
+      })));
+      var childSum_1 = 0;
+      columnDefs.forEach(function (col) {
+        var field = col.field,
+          aggFunc = col.aggFunc;
+        var rawValue = Number(row[field]) || 0;
+        if (aggFunc === "avg") {
+          // Track sum and count per cell
+          newRow_1["__".concat(field, "_sum")] = rawValue;
+          newRow_1["__".concat(field, "_count")] = 1;
+          newRow_1[field] = rawValue;
+          childSum_1 += rawValue;
+        } else {
+          var isCount = aggFunc === "count";
+          var value = isCount ? 1 : rawValue;
+          newRow_1[field] = value;
+          if (!isCount) childSum_1 += value;
+        }
+      });
+      newRow_1.totalMedals = childSum_1;
+      groupEntry.childrenMap.set(pivotKey, newRow_1);
+    } else {
+      var existingRow_1 = groupEntry.childrenMap.get(pivotKey);
+      var childSum_2 = 0;
+      columnDefs.forEach(function (col) {
+        var field = col.field,
+          aggFunc = col.aggFunc;
+        var rawValue = Number(row[field]) || 0;
+        if (aggFunc === "avg") {
+          existingRow_1["__".concat(field, "_sum")] = (existingRow_1["__".concat(field, "_sum")] || 0) + rawValue;
+          existingRow_1["__".concat(field, "_count")] = (existingRow_1["__".concat(field, "_count")] || 0) + 1;
+          existingRow_1[field] = existingRow_1["__".concat(field, "_sum")] / existingRow_1["__".concat(field, "_count")];
+          childSum_2 += rawValue;
+        } else {
+          var isCount = aggFunc === "count";
+          var value = isCount ? 1 : rawValue;
+          existingRow_1[field] = applyPivotAgg(aggFunc, existingRow_1[field], value);
+          if (!isCount) childSum_2 += existingRow_1[field];
+        }
+      });
+      existingRow_1.totalMedals = childSum_2;
+    }
+  });
+  // Fill empty pivot combinations per group
+  for (var _i = 0, groupByValues_1 = groupByValues; _i < groupByValues_1.length; _i++) {
+    var groupValue = groupByValues_1[_i];
+    var groupKey = String(groupValue);
+    var groupEntry = groupMap.get(groupKey);
+    var _loop_1 = function (combo) {
+      var _g;
+      var pivotKey = pivotColumns.map(function (k) {
+        return combo[k];
+      }).join("||");
+      if (!groupEntry.childrenMap.has(pivotKey)) {
+        var newRow_2 = tslib.__assign((_g = {}, _g[groupBy] = groupValue, _g), combo);
+        columnDefs.forEach(function (col) {
+          newRow_2[col.field] = 0;
+        });
+        newRow_2.totalMedals = 0;
+        groupEntry.childrenMap.set(pivotKey, newRow_2);
+      }
+    };
+    for (var _a = 0, allCombinations_1 = allCombinations; _a < allCombinations_1.length; _a++) {
+      var combo = allCombinations_1[_a];
+      _loop_1(combo);
+    }
+  }
+  // Final pass to compute group-level averages
+  for (var _b = 0, _c = groupMap.entries(); _b < _c.length; _b++) {
+    var _d = _c[_b],
+      groupKey = _d[0],
+      _e = _d[1],
+      childrenMap = _e.childrenMap,
+      totalAggregations = _e.totalAggregations,
+      totalMedalsRaw = _e.totalMedalsRaw,
+      avgTracking = _e.avgTracking;
+    for (var _f = 0, columnDefs_1 = columnDefs; _f < columnDefs_1.length; _f++) {
+      var col = columnDefs_1[_f];
+      if (col.aggFunc === "avg") {
+        var stats = avgTracking[col.field];
+        if (stats) {
+          totalAggregations[col.field] = stats.count > 0 ? stats.sum / stats.count : 0;
+        } else {
+          totalAggregations[col.field] = 0;
+        }
+      }
+    }
+    totalAggregations.total = Object.values(totalAggregations).reduce(function (sum, val) {
+      return sum + val;
+    }, 0);
+    result.push({
+      groupKey: groupKey,
+      children: Array.from(childrenMap.values()),
+      totalAggregations: totalAggregations,
+      totalMedals: totalMedalsRaw
+    });
+  }
+  return result;
+}
+
 var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
+  // for full row editing
   var _b = _a.data,
     data = _b === void 0 ? [] : _b,
     onDataChange = _a.onDataChange,
@@ -2700,83 +3182,272 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     onSortChange = _a.onSortChange,
     // for sorting
     sortModel = _a.sortModel,
-    onRowGroup = _a.onRowGroup;
+    onRowGroup = _a.onRowGroup,
+    _h = _a.pivotMode,
+    pivotMode = _h === void 0 ? false : _h,
+    serverPivoting = _a.serverPivoting,
+    addRowConfig = _a.addRowConfig,
+    editType = _a.editType,
+    onCellValueChanged = _a.onCellValueChanged,
+    onRowValueChanged = _a.onRowValueChanged,
+    fullRowButtons = _a.fullRowButtons;
+  var _j = React.useState(null),
+    editingRowId = _j[0],
+    setEditingRowId = _j[1];
+  var _k = React.useState(null),
+    editingRowData = _k[0],
+    setEditingRowData = _k[1];
+  // Tracks whether the user is currently editing/adding a new row
+  var _l = React.useState(false),
+    isAddingRow = _l[0],
+    setIsAddingRow = _l[1];
+  // Holds the data being entered for the new row
+  var _m = React.useState({}),
+    newRowData = _m[0],
+    setNewRowData = _m[1];
+  var generateInitialRowData = function () {
+    var initial = {};
+    columns === null || columns === void 0 ? void 0 : columns.forEach(function (col) {
+      if (!(col.field in initial)) {
+        initial[col.field] = ""; // or default for col.type
+      }
+    });
+    return initial;
+  };
+  // get server-pivoting props
+  var _o = serverPivoting || {},
+    serverPivotedData = _o.serverPivotedData,
+    serverPivotDataColumns = _o.serverPivotDataColumns,
+    serverPivotCols = _o.serverPivotCols,
+    setServerPivotColsFn = _o.setServerPivotColsFn,
+    setServerGroupedColsFn = _o.setServerGroupedCols,
+    setServerAggColsFn = _o.setServerAggColsFn,
+    serverAggCols = _o.serverAggCols;
   var isServerSide = rowModelType === "serverSide";
+  var _p = React.useState(pivotMode),
+    enablePivot = _p[0],
+    setEnablePivot = _p[1];
+  var defaultPivotColumns = React.useMemo(function () {
+    var _a;
+    return ((_a = columnDefs.columns) === null || _a === void 0 ? void 0 : _a.filter(function (item) {
+      return item.pivot;
+    }).map(function (item) {
+      return item.field;
+    })) || [];
+  }, [columnDefs]);
+  // To apply pivot on like game, year etc
+  var _q = React.useState(defaultPivotColumns),
+    pivotColumns = _q[0],
+    setPivotColumns = _q[1];
+  var _r = React.useState(columnDefs);
+    _r[0];
+    _r[1];
+  // sort data on pivoting mode
+  var _s = React.useState(null),
+    sortDirection = _s[0],
+    setSortDirection = _s[1];
+  var toggleSortByTotalMedals = function () {
+    setSortDirection(function (prev) {
+      return prev === "asc" ? "desc" : "asc";
+    });
+  };
+  var _t = React.useState({}),
+    columnAggFnMap = _t[0],
+    setColumnAggFnMap = _t[1];
+  var aggCols = React.useMemo(function () {
+    var _a, _b;
+    if (!enablePivot) return;
+    return (_b = (_a = columnDefs === null || columnDefs === void 0 ? void 0 : columnDefs.columns) === null || _a === void 0 ? void 0 : _a.filter(function (col) {
+      var _a;
+      return typeof ((_a = data === null || data === void 0 ? void 0 : data[0]) === null || _a === void 0 ? void 0 : _a[col.field]) === "number" && col.pivot !== true && col.field !== "year";
+    } // exclude year column as you wanted
+    )) === null || _b === void 0 ? void 0 : _b.map(function (col) {
+      return {
+        field: col.field,
+        aggFunc: columnAggFnMap[col.field] || "sum" // fallback to sum if not set
+      };
+    });
+  }, [columnDefs, data, columnAggFnMap]);
+  // eg field, aggFunc - silver, sum
+  var _u = React.useState(serverAggCols ? serverAggCols : aggCols || []),
+    _aggCols = _u[0],
+    _setAggCols = _u[1];
+  // 🧠 Automatically filter when columnDefs or _aggCols change
+  var _v = React.useState("sum"),
+    selectedAggFn = _v[0];
+    _v[1];
+  // drag and drop of the column while applying agg
+  var handleAggDrop = function (e) {
+    if (!enablePivot) return;
+    var field = e.dataTransfer.getData("text/plain");
+    if (!field) return;
+    setColumnAggFnMap(function (prev) {
+      var _a;
+      return tslib.__assign(tslib.__assign({}, prev), (_a = {}, _a[field] = selectedAggFn || "sum", _a));
+    });
+  };
+  var groupByField = React.useMemo(function () {
+    var _a, _b;
+    return (_b = (_a = columnDefs === null || columnDefs === void 0 ? void 0 : columnDefs.columns) === null || _a === void 0 ? void 0 : _a.find(function (col) {
+      return col.rowGroup;
+    })) === null || _b === void 0 ? void 0 : _b.field;
+  }, [columnDefs]);
+  // set the grouped column via setter function
+  React.useEffect(function () {
+    if (setServerGroupedColsFn && groupByField) {
+      setServerGroupedColsFn(groupByField);
+    }
+  }, [groupByField, setServerGroupedColsFn]);
+  // on removing the the column from the ColumnSide bar
+  React.useEffect(function () {
+    if (!enablePivot) return;
+    var fromMap = Object.entries(columnAggFnMap).map(function (_a) {
+      var field = _a[0],
+        aggFunc = _a[1];
+      return {
+        field: field,
+        aggFunc: aggFunc
+      };
+    });
+    if (fromMap.length > 0) {
+      setServerAggColsFn ? setServerAggColsFn(fromMap) : _setAggCols(fromMap);
+    } else if (aggCols && _aggCols.length === 0 && aggCols.length > 0) {
+      setServerAggColsFn ? setServerAggColsFn(aggCols || []) : _setAggCols(aggCols || []);
+    }
+  }, [columnAggFnMap, enablePivot, aggCols, setServerAggColsFn]);
+  var groupedPivotedData = React.useMemo(function () {
+    var _a;
+    if (!enablePivot || !pivotMode) return [];
+    if (groupByField && _aggCols) {
+      var grouped = serverPivoting && serverPivotedData ? serverPivotedData : (_a = pivotAndAggregateByGroup(data, groupByField, pivotColumns, serverAggCols ? serverAggCols : _aggCols)) !== null && _a !== void 0 ? _a : [];
+      if (sortDirection && grouped.length > 0) {
+        return tslib.__spreadArray([], grouped, true).sort(function (a, b) {
+          var _a, _b, _c, _d;
+          return sortDirection === "asc" ? ((_a = a.totalMedals) !== null && _a !== void 0 ? _a : 0) - ((_b = b.totalMedals) !== null && _b !== void 0 ? _b : 0) : ((_c = b.totalMedals) !== null && _c !== void 0 ? _c : 0) - ((_d = a.totalMedals) !== null && _d !== void 0 ? _d : 0);
+        });
+      }
+      return grouped;
+    }
+    return [];
+  }, [data, groupByField, pivotColumns, _aggCols, sortDirection, serverAggCols, enablePivot, serverPivoting, serverPivotedData]);
+  function getPivotDataColumns(data, pivotColumns) {
+    if (!enablePivot) return;
+    if (serverPivotDataColumns) {
+      return serverPivotDataColumns;
+    }
+    return pivotColumns.map(function (key) {
+      var _a;
+      var values = Array.from(new Set(data.map(function (row) {
+        return row[key];
+      })));
+      return _a = {}, _a[key] = values, _a;
+    });
+  }
+  // get all the unique values for the pivot columns
+  var pivotDataColumns = React.useMemo(function () {
+    return serverPivoting && serverPivotCols ? getPivotDataColumns(data, serverPivotCols) : getPivotDataColumns(data, pivotColumns);
+  }, [data, serverPivotCols, pivotColumns, serverPivoting]);
+  var togglePivot = React.useCallback(function () {
+    setEnablePivot(function (prev) {
+      return !prev;
+    });
+  }, []);
   var getCookedData = useCookedData(columnDefs).getCookedData;
-  var _h = columnDefs.columns,
-    propColumns = _h === void 0 ? [] : _h,
-    _j = columnDefs.masterDetail,
-    masterDetail = _j === void 0 ? false : _j,
-    _k = columnDefs.detailGridOptions,
-    detailGridOptions = _k === void 0 ? {} : _k,
-    _l = columnDefs.getDetailRowData,
-    getDetailRowData = _l === void 0 ? undefined : _l,
-    _m = columnDefs.aggFuncs,
-    aggFuncs = _m === void 0 ? {} : _m,
-    _o = columnDefs.grandTotalRow,
-    grandTotalRow = _o === void 0 ? "none" : _o,
-    _p = columnDefs.tableLayout,
-    tableLayout = _p === void 0 ? "fixed" : _p;
+  var _w = columnDefs.columns,
+    propColumns = _w === void 0 ? [] : _w,
+    _x = columnDefs.masterDetail,
+    masterDetail = _x === void 0 ? false : _x,
+    _y = columnDefs.detailGridOptions,
+    detailGridOptions = _y === void 0 ? {} : _y,
+    _z = columnDefs.getDetailRowData,
+    getDetailRowData = _z === void 0 ? undefined : _z,
+    _0 = columnDefs.aggFuncs,
+    aggFuncs = _0 === void 0 ? {} : _0,
+    _1 = columnDefs.grandTotalRow,
+    grandTotalRow = _1 === void 0 ? "none" : _1,
+    _2 = columnDefs.tableLayout,
+    tableLayout = _2 === void 0 ? "fixed" : _2;
   // State
-  var _q = React.useState([]),
-    gridData = _q[0],
-    setGridData = _q[1];
-  var _r = React.useState([]),
-    columns = _r[0],
-    setColumns = _r[1];
-  var _s = React.useState({
+  var _3 = React.useState([]),
+    gridData = _3[0],
+    setGridData = _3[1];
+  var _4 = React.useState([]),
+    columns = _4[0],
+    setColumns = _4[1];
+  var _5 = React.useState({
       key: null,
       direction: "asc"
     }),
-    sortConfig = _s[0],
-    setSortConfig = _s[1];
-  var _t = React.useState({}),
-    filters = _t[0],
-    setFilters = _t[1];
-  var _u = React.useState({}),
-    filterTypes = _u[0],
-    setFilterTypes = _u[1];
-  var _v = React.useState({}),
-    debouncedFilters = _v[0],
-    setDebouncedFilters = _v[1];
-  var _w = React.useState([]),
-    groupedColumns = _w[0],
-    setGroupedColumns = _w[1];
-  var _x = React.useState({}),
-    expandedGroups = _x[0],
-    setExpandedGroups = _x[1];
-  var _y = React.useState({}),
-    selectedRows = _y[0],
-    setSelectedRows = _y[1];
+    sortConfig = _5[0],
+    setSortConfig = _5[1];
+  var _6 = React.useState({}),
+    filters = _6[0],
+    setFilters = _6[1];
+  var _7 = React.useState({}),
+    filterTypes = _7[0],
+    setFilterTypes = _7[1];
+  var _8 = React.useState({}),
+    debouncedFilters = _8[0],
+    setDebouncedFilters = _8[1];
+  var _9 = React.useState([]),
+    groupedColumns = _9[0],
+    setGroupedColumns = _9[1];
+  var _10 = React.useState({}),
+    expandedGroups = _10[0],
+    setExpandedGroups = _10[1];
+  var _11 = React.useState({}),
+    selectedRows = _11[0],
+    setSelectedRows = _11[1];
+  var handlePivotDrop = React.useCallback(function (e) {
+    e.preventDefault();
+    if (!enablePivot) return;
+    var field = e.dataTransfer.getData("columnField");
+    // Find the column from the full column list
+    columns.find(function (c) {
+      return c.field === field;
+    });
+    // If pivot is not allowed on this column, exit early
+    // if (!col || !col.pivot) return;
+    if (field && !pivotColumns.includes(field)) {
+      setPivotColumns(function (prev) {
+        return tslib.__spreadArray(tslib.__spreadArray([], prev, true), [field], false);
+      });
+    }
+    if (serverPivotCols && field && !serverPivotCols.includes(field) && serverPivoting && setServerPivotColsFn) {
+      setServerPivotColsFn(function (prev) {
+        return tslib.__spreadArray(tslib.__spreadArray([], prev, true), [field], false);
+      });
+    }
+  }, [pivotColumns, serverPivotCols]);
   // for server-side row grouping
   React.useEffect(function () {
     if (isServerSide && onRowGroup) {
       onRowGroup(groupedColumns);
     }
-  }, [groupedColumns]);
+  }, [groupedColumns, isServerSide, onRowGroup]);
   // Column drag & drop
-  var _z = React.useState(null),
-    draggedColumn = _z[0],
-    setDraggedColumn = _z[1];
-  var _0 = React.useState(null),
-    dragOverColumn = _0[0],
-    setDragOverColumn = _0[1];
+  var _12 = React.useState(null),
+    draggedColumn = _12[0],
+    setDraggedColumn = _12[1];
+  var _13 = React.useState(null),
+    dragOverColumn = _13[0],
+    setDragOverColumn = _13[1];
   var columnDragCounter = React.useRef(0);
   var tableRef = React.useRef(null);
   // Cell editing
-  var _1 = React.useState(null),
-    editingCell = _1[0],
-    setEditingCell = _1[1];
-  var _2 = React.useState(""),
-    editValue = _2[0],
-    setEditValue = _2[1];
+  var _14 = React.useState(null),
+    editingCell = _14[0],
+    setEditingCell = _14[1];
+  var _15 = React.useState(""),
+    editValue = _15[0],
+    setEditValue = _15[1];
   // Master/Detail
-  var _3 = React.useState({}),
-    expandedRows = _3[0],
-    setExpandedRows = _3[1];
-  var _4 = React.useState({}),
-    detailData = _4[0],
-    setDetailData = _4[1];
+  var _16 = React.useState({}),
+    expandedRows = _16[0],
+    setExpandedRows = _16[1];
+  var _17 = React.useState({}),
+    detailData = _17[0],
+    setDetailData = _17[1];
   // Create debounced filter handler using useCallback to maintain reference
   var debouncedFnRef = React.useRef(undefined);
   var debouncedSetFilters = React.useCallback(function (newFilters) {
@@ -2789,13 +3460,13 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     debouncedFnRef.current(newFilters);
   }, []);
   // Add undo/redo state
-  var _5 = React.useState({
+  var _18 = React.useState({
       past: [],
       present: data,
       future: []
     }),
-    history = _5[0],
-    setHistory = _5[1];
+    history = _18[0],
+    setHistory = _18[1];
   // Add undo/redo handlers
   var canUndo = history.past.length > 0;
   var canRedo = history.future.length > 0;
@@ -3135,12 +3806,20 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   // 6) Editing
   // ----------------------------
   var startEditing = React.useCallback(function (rowIndex, field, value) {
-    setEditingCell({
-      rowIndex: rowIndex,
-      field: field
-    });
-    setEditValue(value);
-  }, []);
+    if (editType === "fullRow") {
+      setEditingRowId(rowIndex);
+      setEditingRowData(function (prev) {
+        var _a;
+        return tslib.__assign(tslib.__assign({}, prev), (_a = {}, _a[field] = value, _a));
+      });
+    } else {
+      setEditingCell({
+        rowIndex: rowIndex,
+        field: field
+      });
+      setEditValue(value);
+    }
+  }, [editType]);
   var handleEditChange = React.useCallback(function (value, editorType) {
     var _a;
     if (editorType === "select" || editorType === "date" || editorType === "time" || editorType === "dateTime" || editorType === "checkbox") {
@@ -3413,6 +4092,10 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   }, [filteredData, groupedColumns, columns, isServerSide, data]);
   var flattenedRows = React.useMemo(function () {
     var flatList = [];
+    var dataToRender = filteredData;
+    if (!dataToRender || dataToRender.length === 0) {
+      return flatList;
+    }
     if (!filteredData || filteredData.length === 0) {
       return flatList;
     }
@@ -3470,7 +4153,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       walkGroups_1(groupedData, 0, 0);
     } else {
       // Handle flat data
-      filteredData.forEach(function (row, index) {
+      dataToRender.forEach(function (row, index) {
         flatList.push({
           type: "data",
           row: row,
@@ -3488,7 +4171,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       });
     }
     return flatList;
-  }, [filteredData, groupedData, expandedGroups, expandedRows, masterDetail]);
+  }, [filteredData, groupedData, expandedGroups, expandedRows, masterDetail, enablePivot, pivotColumns]);
   // Or modify it to only expand on initial load if you want that behavior
   React.useEffect(function () {
     if (groupedData && groupedColumns.length === 1) {
@@ -3537,7 +4220,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     } // hide if aggSourceField is set
     );
     return tslib.__spreadArray(tslib.__spreadArray([], grouped, true), nonGrouped, true);
-  }, [columns, groupedColumns]);
+  }, [columns, groupedColumns, enablePivot, pivotColumns, enablePivot]);
   // Add a helper function to get cell value
   var getCellValue = function (row, field, col) {
     // If the row has aggregations and this is an aggregated column, use the aggregation value
@@ -3615,7 +4298,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
           className: "font-medium"
         }, groupColumn_1 ? "".concat(String(item.groupValue)) : String(item.groupValue)), /*#__PURE__*/React.createElement("p", {
           className: "text-gray-500 font-[10px]"
-        }, "(", item.itemCount, " items)")))) : col.aggFunc && item.aggregations && item.aggregations[col.field] !== undefined ? (/*#__PURE__*/React.createElement("div", {
+        }, "(", item.itemCount, " items)")))) : "aggFunc" in col && col.aggFunc && item.aggregations && item.aggregations[col.field] !== undefined ? (/*#__PURE__*/React.createElement("div", {
           className: "w-full"
         }, /*#__PURE__*/React.createElement("div", {
           className: "flex items-center bg-gray-100 px-2 w-[min-content] rounded-md text-sm"
@@ -3657,6 +4340,8 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
           className: "h-4 w-4"
         })));
       }
+      // Full row editing logic
+      var isFullRowEditing_1 = editType === "fullRow" && typeof onRowValueChanged === "function" && typeof onCellValueChanged === "function" && editingRowId === rowIndex_1;
       return /*#__PURE__*/React.createElement(TableRow, {
         key: virtualRow.key,
         "data-index": virtualRow.index,
@@ -3694,7 +4379,44 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         },
         className: "border-1 border-gray-400 cursor-pointer"
       })))), displayColumns.map(function (col, colIndex) {
-        var cellRenderer = col.cellRenderer;
+        var _a;
+        if (isFullRowEditing_1 && col.editable) {
+          return /*#__PURE__*/React.createElement(TableCell, {
+            key: col.field
+          }, /*#__PURE__*/React.createElement(CellEditor, {
+            value: (_a = editingRowData === null || editingRowData === void 0 ? void 0 : editingRowData[col.field]) !== null && _a !== void 0 ? _a : row_2 === null || row_2 === void 0 ? void 0 : row_2[col.field],
+            columnDef: tslib.__assign(tslib.__assign({}, col), {
+              editorType: col.editorType || "text"
+            }),
+            onKeyDown: function (e) {
+              if (e.key === "Enter") {
+                var updatedRow = tslib.__assign(tslib.__assign({}, row_2), editingRowData);
+                onRowValueChanged === null || onRowValueChanged === void 0 ? void 0 : onRowValueChanged({
+                  data: updatedRow
+                });
+                setEditingRowData({});
+                setEditingRowId(null);
+              }
+              if (e.key === "Escape") {
+                handleStopEditing();
+              }
+            },
+            onChange: function (value) {
+              var _a;
+              if (!col || !col.field) return;
+              setEditingRowData(function (prev) {
+                var _a;
+                return tslib.__assign(tslib.__assign({}, prev), (_a = {}, _a[col.field] = value, _a));
+              });
+              onCellValueChanged({
+                value: value,
+                field: col.field,
+                data: tslib.__assign(tslib.__assign(tslib.__assign({}, row_2), editingRowData), (_a = {}, _a[col.field] = value, _a))
+              });
+            }
+          }));
+        }
+        var cellRenderer = "cellRenderer" in col ? col.cellRenderer : undefined;
         var cellValue = row_2 ? getCellValue(row_2, col.field, col) : undefined;
         var isEditing = editingCell && editingCell.rowIndex === rowIndex_1 && editingCell.field === col.field;
         // If it's the first column and there's master detail, show expand button
@@ -3713,6 +4435,32 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
             }
           }, expandButton_1, formatCellValue(cellValue, row_2 || {}, col)));
         }
+        var editorType = "editorType" in col ? col.editorType : undefined;
+        // Option 2: Custom render for country column
+        if ("rowGroup" in col && col.rowGroup && enablePivot && pivotColumns.length > 0) {
+          // Calculate total medals for this row (sum all number fields except the grouped field)
+          var totalMedals = Object.keys(row_2 || {}).filter(function (k) {
+            return k !== col.field && typeof (row_2 === null || row_2 === void 0 ? void 0 : row_2[k]) === "number" && !isNaN(row_2 === null || row_2 === void 0 ? void 0 : row_2[k]);
+          }).reduce(function (acc, k) {
+            return acc + (Number(row_2 === null || row_2 === void 0 ? void 0 : row_2[k]) || 0);
+          }, 0);
+          return /*#__PURE__*/React.createElement(TableCell, {
+            key: col.field,
+            style: tslib.__assign(tslib.__assign({}, getCellWidth(col)), {
+              overflow: "hidden",
+              cursor: col.editable ? "pointer" : "text",
+              textWrap: "wrap",
+              whiteSpace: "normal",
+              wordBreak: "break-word"
+            }),
+            className: cn(isEditing ? "p-[0px]" : ""),
+            onDoubleClick: function () {
+              if (!cellRenderer && col.editable && rowIndex_1 !== undefined && editorType !== "checkbox" && (!("rowGroup" in col) || !col.rowGroup)) {
+                startEditing(rowIndex_1, col.field, String(cellValue));
+              }
+            }
+          }, /*#__PURE__*/React.createElement("div", null, String(row_2 === null || row_2 === void 0 ? void 0 : row_2[col.field]), " (", totalMedals, ")"));
+        }
         return /*#__PURE__*/React.createElement(TableCell, {
           key: col.field,
           style: tslib.__assign(tslib.__assign({}, getCellWidth(col)), {
@@ -3724,7 +4472,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
           }),
           className: cn(isEditing ? "p-[0px]" : ""),
           onDoubleClick: function () {
-            if (!cellRenderer && col.editable && rowIndex_1 !== undefined && col.editorType !== "checkbox" && !col.rowGroup) {
+            if (!cellRenderer && col.editable && rowIndex_1 !== undefined && editorType !== "checkbox" && (!("rowGroup" in col) || !col.rowGroup)) {
               startEditing(rowIndex_1, col.field, String(cellValue));
             }
           }
@@ -3732,21 +4480,25 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
           value: cellValue,
           data: row_2,
           rowIndex: rowIndex_1
-        })) : isEditing && col.editorType !== "checkbox" ? (/*#__PURE__*/React.createElement(CellEditor, {
+        })) : isEditing && editorType !== "checkbox" ? (/*#__PURE__*/React.createElement(CellEditor, {
           value: editValue,
           columnDef: {
-            editorType: col.editorType || "text",
-            editorParams: col.editorParams
+            editorType: editorType || "text",
+            // editorParams: col.editorParams,
+            editorParams: "editorParams" in col ? col.editorParams : undefined
           },
           onChange: function (value) {
-            return handleEditChange(value, col.editorType);
+            return handleEditChange(value, editorType);
           },
           onBlur: function () {
             var _a;
             // Commit changes
-            if (!editingCell && col.editorType !== "select" && col.editorType !== "date" && col.editorType !== "checkbox") return;
+            if (!editingCell && editorType !== "select" && editorType !== "date" && editorType !== "checkbox") return;
             var field = editingCell.field;
-            var updatedData = col.valueSetter ? col.valueSetter({
+            // const updatedData = col.valueSetter
+            //   ? col.valueSetter({ value: editValue })
+            //   : { [field]: editValue };
+            var updatedData = "valueSetter" in col && col.valueSetter ? col.valueSetter({
               value: editValue
             }) : (_a = {}, _a[field] = editValue, _a);
             var newRow = tslib.__assign(tslib.__assign({}, row_2), updatedData);
@@ -3778,7 +4530,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
               e.currentTarget.blur();
             }
           }
-        })) : col.editorType === "checkbox" && col.editable ? (/*#__PURE__*/React.createElement("div", {
+        })) : editorType === "checkbox" && col.editable ? (/*#__PURE__*/React.createElement("div", {
           className: "flex items-center space-x-2"
         }, /*#__PURE__*/React.createElement(Switch, {
           id: "".concat(rowIndex_1, "-").concat(col.field),
@@ -3789,7 +4541,9 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
           checked: cellValue
         }))) : (/*#__PURE__*/React.createElement("div", {
           className: "w-full"
-        }, col.tooltipField ? (/*#__PURE__*/React.createElement(Tooltip, null, /*#__PURE__*/React.createElement(TooltipTrigger, {
+        },
+        // col.tooltipField
+        "tooltipField" in col && col.tooltipField ? (/*#__PURE__*/React.createElement(Tooltip, null, /*#__PURE__*/React.createElement(TooltipTrigger, {
           asChild: true
         }, /*#__PURE__*/React.createElement("span", null, col.rowGroup ? "" : formatCellValue(cellValue, row_2 || {}, col))), /*#__PURE__*/React.createElement(TooltipContent, {
           className: ""
@@ -3856,6 +4610,9 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   var handleGroupDrop = React.useCallback(function (e) {
     e.preventDefault();
     var field = e.dataTransfer.getData("columnField");
+    if (enablePivot && !pivotColumns.includes(field)) {
+      setColumnGrouped(field, true);
+    }
     if (field && !groupedColumns.includes(field)) {
       setColumnGrouped(field, true);
     }
@@ -3906,7 +4663,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       }, col.type === "number" ? (/*#__PURE__*/React.createElement("div", {
         className: "font-semibold"
       }, (_a = calculateTotals[col.field]) === null || _a === void 0 ? void 0 : _a.toLocaleString())) : (/*#__PURE__*/React.createElement("div", {
-        className: "font-semibold"
+        className: "font-semibold "
       }, index === 0 ? "Total" : "")));
     })))));
   };
@@ -3969,15 +4726,29 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       rowSelection === null || rowSelection === void 0 ? void 0 : rowSelection.getSelectedRows(selectedData);
     }
   }, [selectedRows]);
-  var _6 = React.useState(""),
-    search = _6[0],
-    setSearch = _6[1];
-  var _7 = React.useState(false),
-    sidebarOpen = _7[0],
-    setSidebarOpen = _7[1];
+  var _19 = React.useState(""),
+    search = _19[0],
+    setSearch = _19[1];
+  var _20 = React.useState(false),
+    sidebarOpen = _20[0],
+    setSidebarOpen = _20[1];
+  // to exit from the editing mode - full row edit mode
+  var handleStopEditing = React.useCallback(function () {
+    setEditingRowId(null);
+    setEditingRowData(null);
+  }, [setEditingRowId, setEditingRowData]);
+  // to  start editing the second row - full row edit mode
+  var handleEditSecondRow = React.useCallback(function () {
+    var rowIndex = 1;
+    // 2nd row means index 1 (0-based)
+    var row = gridData[rowIndex];
+    if (!row) return;
+    setEditingRowId(rowIndex);
+    setEditingRowData(row);
+  }, [gridData, setEditingRowId, setEditingRowData]);
   // Add this above your return statement
   var aggregationStats = React.useMemo(function () {
-    if (!isServerSide) return;
+    if (isServerSide) return [];
     if (!columns || !columns.length || !gridData.length) return {};
     var stats = {};
     columns.forEach(function (col) {
@@ -4014,10 +4785,45 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     });
     return stats;
   }, [columns, gridData, isServerSide]);
+  // Add keyboard event listener for adding a new row when we have addRowConfig CTRL + A
+  React.useEffect(function () {
+    if (!addRowConfig) return;
+    var handleKeyDown = function (e) {
+      var isCtrlOrMeta = e.ctrlKey || e.metaKey;
+      var isPlusKey = e.key === "+" || e.key === "="; // some keyboards require Shift + = for +
+      if (isCtrlOrMeta && isPlusKey) {
+        e.preventDefault(); // prevent browser zoom
+        var initial = generateInitialRowData();
+        setNewRowData(initial);
+        setIsAddingRow(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return function () {
+      return window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [addRowConfig]);
   // Update the main grid container JSX
   return /*#__PURE__*/React.createElement("div", {
     className: "relative w-[100%] h-full"
-  }, loading && (/*#__PURE__*/React.createElement("div", {
+  }, editType === "fullRow" && fullRowButtons && (/*#__PURE__*/React.createElement("div", {
+    className: "gap-2 flex items-center mb-2"
+  }, [{
+    title: "Start Editing Line 2",
+    onClick: handleEditSecondRow,
+    hide: (gridData === null || gridData === void 0 ? void 0 : gridData.length) < 2
+  }, {
+    title: "Stop Editing",
+    onClick: handleStopEditing,
+    hide: false
+  }].filter(function (btn) {
+    return !btn.hide;
+  }).map(function (btn) {
+    return /*#__PURE__*/React.createElement("button", {
+      className: "border px-[12px] py-[5px] cursor-pointer text-[12px] rounded-[6px]",
+      onClick: btn.onClick
+    }, btn.title);
+  }))), loading && (/*#__PURE__*/React.createElement("div", {
     className: "absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center"
   }, /*#__PURE__*/React.createElement("div", {
     className: "text-center"
@@ -4026,8 +4832,22 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     size: 15
   }), /*#__PURE__*/React.createElement("p", {
     className: "mt-4 text-gray-600"
-  }, loadingMessage)))), gridData.length > 0 && grandTotalRow === "top" && renderTotalRow(), /*#__PURE__*/React.createElement("div", {
-    className: "flex h-[100%] max-h-[80vh] overflow-y-scroll"
+  }, loadingMessage)))), addRowConfig && (/*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end px-4 py-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "bg-green-600 cursor-pointer text-white px-4 py-1 hover:bg-green-700 transition rounded-full",
+    onClick: function () {
+      var initial = generateInitialRowData();
+      setNewRowData(initial);
+      setIsAddingRow(true); // explicitly here instead
+    }
+  }, "+ Add New Row"))), enablePivot && setPivotColumns && (/*#__PURE__*/React.createElement(PivotPanel, {
+    pivotColumns: serverPivoting && serverPivotCols ? serverPivotCols : pivotColumns,
+    columns: columns,
+    setPivotColumns: serverPivoting && setServerPivotColsFn ? setServerPivotColsFn : setPivotColumns,
+    handlePivotDrop: handlePivotDrop
+  })), gridData.length > 0 && grandTotalRow === "top" && renderTotalRow(), /*#__PURE__*/React.createElement("div", {
+    className: "flex h-[100%] max-h-[80vh] overflow-y-scroll hide-scrollbar"
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       overflow: "auto",
@@ -4036,11 +4856,95 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     ref: scrollParentRef
   }, /*#__PURE__*/React.createElement(Table, {
     ref: tableRef,
-    className: cn("w-full border-b border-l border-r border-gray-200"),
+    className: cn("hiddenw-full border-b border-l border-r border-gray-200"),
     style: {
       tableLayout: tableLayout
     }
-  }, /*#__PURE__*/React.createElement(TableHeader, {
+  }, /*#__PURE__*/React.createElement(React.Fragment, null, enablePivot && pivotDataColumns && pivotDataColumns.length !== 0 && (/*#__PURE__*/React.createElement("thead", {
+    className: "bg-indigo-100  w-full"
+  }, function () {
+    var pivotFields = pivotDataColumns.map(function (obj) {
+      return Object.keys(obj)[0];
+    });
+    var pivotValues = pivotDataColumns.map(function (obj) {
+      return Object.values(obj)[0];
+    });
+    var combinations = pivotValues.reduce(function (acc, values) {
+      return acc.flatMap(function (comb) {
+        return values.map(function (val) {
+          return tslib.__spreadArray(tslib.__spreadArray([], comb, true), [val], false);
+        });
+      });
+    }, [[]]);
+    var activeAggFields = serverPivoting ? new Set(serverAggCols === null || serverAggCols === void 0 ? void 0 : serverAggCols.map(function (def) {
+      return def.field;
+    })) : new Set(_aggCols === null || _aggCols === void 0 ? void 0 : _aggCols.map(function (def) {
+      return def.field;
+    }));
+    var metrics = columns.filter(function (col) {
+      return col.aggFunc && activeAggFields.has(col.field);
+    });
+    return /*#__PURE__*/React.createElement(React.Fragment, null, pivotFields.map(function (pivotField, rowIndex) {
+      var repeatFactor = pivotValues.slice(rowIndex + 1).reduce(function (acc, cur) {
+        return acc * cur.length;
+      }, 1) * metrics.length;
+      var headerCells = [];
+      var lastValue = null;
+      for (var i = 0; i < combinations.length * metrics.length; i += repeatFactor) {
+        var comboIndex = Math.floor(i / metrics.length);
+        var value = combinations[comboIndex][rowIndex];
+        if (value !== lastValue) {
+          headerCells.push(/*#__PURE__*/React.createElement("th", {
+            key: "".concat(pivotField, "-").concat(value, "-").concat(i),
+            colSpan: repeatFactor,
+            className: "text-center border border-gray-200 bg-gray-100 px-4 py-2"
+          }, value));
+          lastValue = value;
+        }
+      }
+      return /*#__PURE__*/React.createElement("tr", {
+        key: "".concat(pivotField, "-").concat(rowIndex)
+      }, rowIndex === 0 && groupedColumns.length !== 0 && (/*#__PURE__*/React.createElement("th", {
+        rowSpan: pivotFields.length + 1,
+        onClick: toggleSortByTotalMedals,
+        className: "cursor-pointer sticky left-0 z-20 border border-gray-200 px-4 py-2 bg-gray-100 "
+      }, "Group", sortDirection === "asc" ? "↑" : sortDirection === "desc" ? "↓" : "")), headerCells);
+    }), /*#__PURE__*/React.createElement("tr", null, combinations.map(function (combo, index) {
+      return metrics.map(function (metric) {
+        return /*#__PURE__*/React.createElement("th", {
+          key: "metric-".concat(index, "-").concat(metric.field),
+          className: "text-center border border-gray-200 px-4 py-2 font-normal text-sm text-gray-700"
+        }, (columnAggFnMap === null || columnAggFnMap === void 0 ? void 0 : columnAggFnMap[metric.field]) || "sum", "(", metric.headerName || metric.field, ")");
+      });
+    })));
+  }())), groupedPivotedData && groupedPivotedData.length > 0 && enablePivot && pivotColumns.length > 0 && !(serverPivoting && serverPivotCols && serverPivotCols.length < 1) && (/*#__PURE__*/React.createElement(TableBody, null, groupedPivotedData.map(function (group) {
+    var _a, _b;
+    return /*#__PURE__*/React.createElement(TableRow, {
+      key: "".concat(group.groupKey, "-").concat(sortDirection),
+      className: "table-row-pop"
+    }, groupedColumns.length !== 0 && (/*#__PURE__*/React.createElement("th", {
+      className: "text-center border border-gray-200 px-4 py-2 font-normal text-sm text-gray-700"
+    }, group.groupKey, " (", (_a = group.totalMedals) === null || _a === void 0 ? void 0 : _a.toLocaleString(), ")")), (_b = group === null || group === void 0 ? void 0 : group.children) === null || _b === void 0 ? void 0 : _b.flatMap(function (childRow, childIndex) {
+      return displayColumns.filter(function (col) {
+        var _a;
+        var def = (_a = columnDefs === null || columnDefs === void 0 ? void 0 : columnDefs.columns) === null || _a === void 0 ? void 0 : _a.find(function (def) {
+          return def.field === col.field;
+        });
+        return !(def === null || def === void 0 ? void 0 : def.rowGroup) && !(def === null || def === void 0 ? void 0 : def.pivot); // Exclude rowGroup & pivot columns
+      }).filter(function (col) {
+        var _a;
+        return (_a = group === null || group === void 0 ? void 0 : group.children) === null || _a === void 0 ? void 0 : _a.some(function (row) {
+          return row[col.field] !== undefined;
+        });
+      }).map(function (col) {
+        var _a;
+        return /*#__PURE__*/React.createElement("th", {
+          key: "".concat(group.groupKey, "-").concat(childIndex, "-").concat(col.field),
+          className: "text-center border border-gray-200 px-4 py-2 font-normal text-sm text-gray-700"
+        }, (_a = childRow[col.field]) === null || _a === void 0 ? void 0 : _a.toLocaleString());
+      });
+    }));
+  })))), /*#__PURE__*/React.createElement(TableHeader, {
     className: "sticky top-0 z-30 bg-gray-200 shadow-sm"
   }, /*#__PURE__*/React.createElement(TableRow, {
     className: "divide-x divide-gray-300"
@@ -4052,11 +4956,11 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     checked: Object.keys(selectedRows).length > 0 && Object.keys(selectedRows).length === gridData.length,
     onCheckedChange: handleHeaderCheckboxChange,
     className: "border-1 border-gray-400 cursor-pointer"
-  }))))), displayColumns.map(function (col) {
+  }))))), (!enablePivot || !serverPivoting && pivotColumns.length < 1 || serverPivoting && !(serverPivotCols === null || serverPivotCols === void 0 ? void 0 : serverPivotCols.length)) && displayColumns.map(function (col, ind) {
     var isDragged = draggedColumn === col.field;
     var isDragOver = dragOverColumn === col.field;
     return /*#__PURE__*/React.createElement(TableHead, {
-      key: col.field,
+      key: "".concat(col.field, "-").concat(ind),
       draggable: showGroupByPanel,
       className: cn("top-0 z-10 transition-colors", {
         "opacity-50": isDragged,
@@ -4093,7 +4997,9 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       style: {
         textWrap: "initial"
       }
-    }, /*#__PURE__*/React.createElement("p", null, col.headerName))), col.headerTooltip && (/*#__PURE__*/React.createElement(TooltipContent, {
+    }, /*#__PURE__*/React.createElement("p", null, col.headerName))),
+    // col.headerTooltip &&
+    "headerTooltip" in col && col.headerTooltip && (/*#__PURE__*/React.createElement(TooltipContent, {
       className: ""
     }, col.headerTooltip))), /*#__PURE__*/React.createElement("span", {
       className: "ml-1 w-[10%] opacity-0 group-hover:opacity-100 transition-opacity duration-150"
@@ -4103,7 +5009,9 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
       className: "h-4 w-4 text-gray-400"
     })) : (/*#__PURE__*/React.createElement(lucideReact.ChevronsUpDown, {
       className: "h-4 w-4 text-gray-400"
-    })))), col.showFilter !== false && (/*#__PURE__*/React.createElement("div", {
+    })))),
+    // col.showFilter !== false &&
+    "showFilter" in col && col.showFilter !== false && (/*#__PURE__*/React.createElement("div", {
       className: "relative group"
     }, /*#__PURE__*/React.createElement(Popover, null, /*#__PURE__*/React.createElement(PopoverTrigger, {
       asChild: true
@@ -4128,7 +5036,53 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
         return handleFilterChange(col.field, "");
       }
     }))))))));
-  }))), /*#__PURE__*/React.createElement(TableBody, {
+  }))), /*#__PURE__*/React.createElement(TableBody, null, newRowData && isAddingRow && (/*#__PURE__*/React.createElement(TableRow, {
+    className: "bg-yellow-50"
+  }, displayColumns.filter(function (col) {
+    return !!col.editorType;
+  }) // ✅ only render if editorType exists
+  .map(function (col) {
+    return /*#__PURE__*/React.createElement(TableCell, {
+      key: "new-".concat(col.field),
+      className: "border-2 p-0"
+    }, /*#__PURE__*/React.createElement(CellEditor, {
+      columnDef: {
+        editorType: col.editorType,
+        editorParams: col.editorParams
+      },
+      value: newRowData[col.field],
+      onChange: function (val) {
+        return setNewRowData(function (prev) {
+          var _a;
+          return tslib.__assign(tslib.__assign({}, prev), (_a = {}, _a[col.field] = val, _a));
+        });
+      },
+      onKeyDown: function (e) {
+        var _a;
+        if (e.key === "Enter") {
+          var isValid = displayColumns.filter(function (c) {
+            return !!c.editorType;
+          }).every(function (col) {
+            var value = newRowData[col.field];
+            return value !== null && value !== undefined && value !== "";
+          });
+          if (isValid) {
+            (_a = addRowConfig === null || addRowConfig === void 0 ? void 0 : addRowConfig.onAdd) === null || _a === void 0 ? void 0 : _a.call(addRowConfig, newRowData);
+            setNewRowData({});
+            setIsAddingRow(false);
+          } else {
+            // Optional: show error UI
+            alert("Please fill all required fields before saving.");
+            console.warn("Please fill all required fields before saving.");
+          }
+        }
+        if (e.key === "Escape") {
+          setNewRowData({});
+          setIsAddingRow(false);
+        }
+      }
+    }));
+  })))), (!enablePivot || !serverPivoting && pivotColumns.length < 1 || serverPivoting && !(serverPivotCols === null || serverPivotCols === void 0 ? void 0 : serverPivotCols.length)) && (/*#__PURE__*/React.createElement(TableBody, {
     style: {
       height: "".concat(rowVirtualizer.getTotalSize(), "px"),
       position: "relative"
@@ -4140,7 +5094,7 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
   }, /*#__PURE__*/React.createElement(TableCell, {
     colSpan: displayColumns.length,
     className: "h-24 text-center"
-  }, "No results found")))))), showGroupByPanel && (/*#__PURE__*/React.createElement("div", {
+  }, "No results found"))))))), showGroupByPanel && (/*#__PURE__*/React.createElement("div", {
     style: {
       width: "auto",
       display: "flex"
@@ -4153,7 +5107,17 @@ var DataGrid = /*#__PURE__*/React.forwardRef(function (_a, ref) {
     showGroupByPanel: showGroupByPanel,
     groupedColumns: groupedColumns,
     setColumnGrouped: setColumnGrouped,
-    handleGroupDrop: handleGroupDrop
+    handleGroupDrop: handleGroupDrop,
+    togglePivot: togglePivot,
+    enablePivot: enablePivot,
+    setPivotColumns: serverPivoting && setServerPivotColsFn ? setServerPivotColsFn : setPivotColumns,
+    pivotColumns: serverPivoting && serverPivotCols ? serverPivotCols : pivotColumns,
+    selectedAggFn: selectedAggFn,
+    columnAggFnMap: columnAggFnMap,
+    setColumnAggFnMap: setColumnAggFnMap,
+    handleAggDrop: handleAggDrop,
+    setAggCols: _setAggCols,
+    pivotMode: pivotMode
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       height: "100%",

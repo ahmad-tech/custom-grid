@@ -26,7 +26,7 @@ interface EditorParamsType {
     max?: number;
     step?: number;
 }
-type EditorType = "text" | "number" | "select" | "date" | "time" | "dateTime";
+export type EditorType = "text" | "number" | "select" | "date" | "time" | "dateTime";
 declare const CellEditor: ({ columnDef, value, onChange, onBlur, onKeyDown, valueFormatter, }: CellEditorProps) => React.JSX.Element;
 export default CellEditor;
 //# sourceMappingURL=CellEditor.d.ts.map

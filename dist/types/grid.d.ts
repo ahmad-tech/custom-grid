@@ -42,6 +42,7 @@ export interface ColumnDef {
     cellRenderer?: unknown;
     aggSourceField?: string | unknown;
     aggSourceFields?: [string, string] | any;
+    pivot?: boolean;
 }
 export interface RowSelection {
     mode: "single" | "multiple";
@@ -74,11 +75,39 @@ export interface IPagination {
     onPageSizeChange: (pageSize: number) => void;
 }
 export type SortModelType = ISortModelItem[];
+export type PivotColumnValuesType = {
+    [field: string]: Array<string | number>;
+};
+export type IPivotDataColumns = PivotColumnValuesType[];
+type SetStateFnType<T> = (value: T | ((prev: T) => T)) => void;
+export interface IAggCol {
+    field: string;
+    aggFunc: string;
+}
+export interface IServerSidePivoting {
+    serverPivotedData: Record<string, unknown>[];
+    serverPivotDataColumns: IPivotDataColumns;
+    serverPivotCols: string[];
+    serverAggCols: IAggCol[];
+    serverGroupedCol: string;
+    setServerGroupedCols: React.Dispatch<React.SetStateAction<string>>;
+    setServerPivotColsFn: React.Dispatch<React.SetStateAction<string[]>>;
+    setServerAggColsFn: (aggCols: IAggCol[]) => void;
+    setServerPivotDataColumns: SetStateFnType<IPivotDataColumns>;
+}
+export interface AddRowConfig {
+    /**
+     * Callback triggered when a new row is added via the grid UI.
+     * Receives the full row object as argument.
+     */
+    onAdd?: (newRow: Record<string, unknown>) => void;
+}
 export interface DataGridProps {
     sortModel?: SortModelType;
     rowModelType?: RowModelType;
     isChild?: boolean;
     data?: Record<string, unknown>[];
+    pivotedData?: Record<string, unknown>[];
     columnDefs: ColumnDefProps;
     onDataChange?: (newRecord: Record<string, unknown>, previousRecord: Record<string, unknown>, field: string) => void;
     loading?: boolean;
@@ -105,6 +134,19 @@ export interface DataGridProps {
     onFilterChange?: (filterModel: IFilterModel) => void;
     pagination?: IPagination;
     onRowGroup?: (groupItem: string[]) => void;
+    pivotMode?: boolean;
+    serverPivoting?: IServerSidePivoting;
+    addRowConfig?: AddRowConfig;
+    editType?: "fullRow" | "cell";
+    onRowValueChanged?: (params: {
+        data: Record<string, unknown>;
+    }) => void;
+    onCellValueChanged?: (params: {
+        data: Record<string, unknown>;
+        field: string;
+        value: unknown;
+    }) => void;
+    fullRowButtons?: boolean;
 }
 export interface ColumnDefProps {
     tableLayout?: "fixed" | "auto";

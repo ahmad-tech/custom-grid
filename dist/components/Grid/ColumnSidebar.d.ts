@@ -9,11 +9,20 @@ interface ColumnSidebarProps {
     groupedColumns?: string[];
     setColumnGrouped?: (field: string, grouped: boolean) => void;
     handleGroupDrop?: (e: React.DragEvent) => void;
+    enablePivot?: boolean;
+    togglePivot?: () => void;
+    pivotColumns?: string[];
+    setPivotColumns?: React.Dispatch<React.SetStateAction<string[]>>;
+    selectedAggFn?: string;
+    columnAggFnMap?: Record<string, string>;
+    setColumnAggFnMap?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+    handleAggDrop: (e: React.DragEvent) => void;
+    setAggCols?: React.Dispatch<React.SetStateAction<{
+        field: string;
+        aggFunc: string;
+    }[]>>;
+    pivotMode?: boolean;
 }
-/**
- * Sidebar component for toggling column visibility, searching columns,
- * and managing row grouping in the DataGrid.
- */
 declare const ColumnSidebar: React.FC<ColumnSidebarProps>;
 export default ColumnSidebar;
 //# sourceMappingURL=ColumnSidebar.d.ts.map

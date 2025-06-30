@@ -24,6 +24,9 @@ import {
   ChevronRight,
   ListFilter,
   Calendar,
+  SquareX,
+  Plus,
+  GripHorizontal,
   // Sigma,
   // X,
 } from "lucide-react";
@@ -60,6 +63,15 @@ import {
   IPivotColumnDef,
   pivotAndAggregateByGroup,
 } from "@/lib/pivot.utils";
+import {
+  buildTreeData,
+  computeAggregationsForTree,
+  findNodeByNodeKey,
+  flattenTree,
+  getAllDescendantNodeKeys,
+  getParentNodeKey,
+  moveTreeNode,
+} from "@/lib/tree-data.util";
 
 export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
   (
@@ -87,14 +99,30 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       onRowGroup,
       pivotMode = false,
       serverPivoting,
-      addRowConfig,
       editType,
       onCellValueChanged,
       onRowValueChanged,
       fullRowButtons,
+      treeData,
+      getDataPath,
+      treeDataChildrenField,
+      groupDefaultExpanded = -1,
+      rowDragManaged,
+      onRowDragEnd,
+      showChildCount,
+      parentRow,
     }: DataGridProps,
     ref: React.Ref<HTMLDivElement>
   ) => {
+    const { addRowConfig } = columnDefs;
+    const [treeExpandedRows, setTreeExpandedRows] = useState<
+      Record<string, boolean>
+    >({});
+
+    //Add state to track the drag-over row
+    const [dragOverRowKey, setDragOverRowKey] = useState<string | null>(null);
+    const [treeInit, setTreeInit] = useState(false);
+
     // for full row editing
 
     const [editingRowId, setEditingRowId] = useState<unknown | null>(null);
@@ -322,9 +350,55 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     const [expandedGroups, setExpandedGroups] = useState<
       Record<string, boolean>
     >({});
+
+    // State for selected rows (nodeKey: boolean)
     const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>(
       {}
     );
+
+    // Handler for tree row selection
+    const handleTreeRowCheckboxChange = (nodeKey: string, checked: boolean) => {
+      setSelectedRows((prev) => {
+        let updated = { ...prev };
+        // Find the node in the flattenedRows
+        const node = findNodeByNodeKey(flattenedRows, nodeKey);
+        if (!node) return updated;
+
+        // Only select/deselect this node and its descendants (not the whole tree)
+        const allKeys = getAllDescendantNodeKeys(
+          node.row,
+          nodeKey.split("/").slice(0, -1)
+        );
+        if (checked) {
+          allKeys.forEach((key) => (updated[key] = true));
+        } else {
+          allKeys.forEach((key) => delete updated[key]);
+        }
+
+        // Bubble up: If all siblings are selected, select parent
+        let parentKey: string | null = getParentNodeKey(nodeKey);
+
+        while (parentKey !== null) {
+          const parent = findNodeByNodeKey(flattenedRows, parentKey);
+          if (parent && parent.row && parent.row.children) {
+            const allChildrenKeys = parent.row.children.map((child: any) =>
+              [...parentKey!.split("/"), child.name].join("/")
+            );
+            const allSelected = allChildrenKeys.every(
+              (key: any) => updated[key]
+            );
+            if (allSelected && checked) {
+              updated[parentKey] = true;
+            } else if (!checked) {
+              delete updated[parentKey];
+            }
+          }
+          parentKey = getParentNodeKey(parentKey);
+        }
+
+        return updated;
+      });
+    };
 
     const handlePivotDrop = useCallback(
       (e: React.DragEvent) => {
@@ -335,7 +409,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         const field = e.dataTransfer.getData("columnField");
 
         // Find the column from the full column list
-        const col = columns.find((c) => c.field === field);
+        // const col = columns.find((c) => c.field === field);
 
         // If pivot is not allowed on this column, exit early
         // if (!col || !col.pivot) return;
@@ -477,7 +551,27 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     // Initial Setup
     useEffect(() => {
       if (data && data.length > 0) {
-        const cookedData = isChild ? data : getCookedData(data);
+        let cookedData: Record<string, unknown>[];
+
+        if (treeData && treeDataChildrenField) {
+          // Build the tree
+          cookedData = buildTreeData(data, treeDataChildrenField, getDataPath);
+
+          // Add aggregations ONLY if columns include them
+          const requiresAggregation = propColumns?.some(
+            (col) => col.field === "aggregatedCount" || col.field === "provided"
+          );
+
+          // Step 2: Add aggregations (Sum & Provided columns)
+
+          if (requiresAggregation) {
+            computeAggregationsForTree(cookedData);
+          }
+        } else if (isChild) {
+          cookedData = data;
+        } else {
+          cookedData = getCookedData(data);
+        }
         setGridData(cookedData);
         // Initialize history with current data
         setHistory({
@@ -507,6 +601,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
         setColumns(extracted);
       }
+
       if (propColumns && propColumns.length > 0) {
         // Separate grouped and non-grouped columns
         const groupedCols = propColumns.filter(
@@ -527,7 +622,75 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
         return;
       }
-    }, [data, propColumns]);
+    }, [data, propColumns, treeData, getDataPath, isChild, getCookedData]);
+
+    const toggleTreeRowExpand = useCallback((nodeKey: string) => {
+      setTreeExpandedRows((prev) => ({
+        ...prev,
+        [nodeKey]: !prev[nodeKey],
+      }));
+    }, []);
+
+    // Update: Set initial expanded rows for tree data based on groupDefaultExpanded
+    useEffect(() => {
+      if (treeData && gridData && Array.isArray(gridData) && !treeInit) {
+        let initialExpanded: Record<string, boolean> = {};
+
+        const getNodeKey = (node: any, parentPath: string[] = []) => {
+          const nodeName =
+            typeof node.name === "string" ? node.name : String(node.name ?? "");
+          return [...parentPath, nodeName].join("/");
+        };
+
+        const expandAll = (nodes: any[], parentPath: string[] = []) => {
+          nodes.forEach((node) => {
+            const nodeName =
+              typeof node.name === "string"
+                ? node.name
+                : String(node.name ?? "");
+            const nodeKey = getNodeKey(node, parentPath);
+            if (node.children && node.children.length > 0) {
+              initialExpanded[nodeKey] = true;
+              expandAll(node.children, [...parentPath, nodeName]);
+            }
+          });
+        };
+
+        const expandLevels = (
+          nodes: any[],
+          levels: number,
+          parentPath: string[] = []
+        ) => {
+          if (levels <= 0) return;
+          nodes.forEach((node) => {
+            const nodeName =
+              typeof node.name === "string"
+                ? node.name
+                : String(node.name ?? "");
+            const nodeKey = getNodeKey(node, parentPath);
+            if (node.children && node.children.length > 0) {
+              initialExpanded[nodeKey] = true;
+              expandLevels(node.children, levels - 1, [
+                ...parentPath,
+                nodeName,
+              ]);
+            }
+          });
+        };
+
+        if (groupDefaultExpanded === -1) {
+          expandAll(gridData);
+        } else if (groupDefaultExpanded > 0) {
+          expandLevels(gridData, groupDefaultExpanded);
+        }
+        setTreeExpandedRows(initialExpanded);
+        setTreeInit(true);
+      }
+    }, [treeData, gridData, groupDefaultExpanded, treeInit]);
+
+    useEffect(() => {
+      setTreeInit(false);
+    }, [gridData]);
 
     // Update filters and trigger debounced update
     const handleFilterChange = useCallback(
@@ -932,6 +1095,21 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       [gridData, getDetailRowData]
     );
 
+    useEffect(() => {
+      // Update detailData for all expanded rows when gridData changes
+      setDetailData((prev) => {
+        const updated: typeof prev = {};
+        Object.keys(expandedRows).forEach((rowIndexStr) => {
+          const rowIndex = Number(rowIndexStr);
+          const row = gridData[rowIndex];
+          if (row && row.children) {
+            updated[rowIndex] = row.children as Record<string, unknown>[];
+          }
+        });
+        return updated;
+      });
+    }, [gridData, expandedRows]);
+
     // ----------------------------
     // 8) Row Grouping
     // ----------------------------
@@ -1143,6 +1321,11 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         parentIndex?: number;
       }> = [];
 
+      if (treeData && gridData && Array.isArray(gridData)) {
+        // Use the flattenTree helper for tree data
+        return flattenTree(gridData, treeExpandedRows, 0, { current: 0 });
+      }
+
       const dataToRender = filteredData;
 
       if (!dataToRender || dataToRender.length === 0) {
@@ -1239,6 +1422,10 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       masterDetail,
       enablePivot,
       pivotColumns,
+      treeData,
+      gridData,
+      expandedRows,
+      treeExpandedRows,
     ]);
 
     // Or modify it to only expand on initial load if you want that behavior
@@ -1271,6 +1458,86 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       useAnimationFrameWithResizeObserver: true,
       overscan: 5,
     });
+
+    // Add this function above your return statement in DataGrid
+
+    const handleTreeRowDrop = useCallback(
+      (draggedNodeKey: string, targetNodeKey: string) => {
+        if (!rowDragManaged || !treeData) return;
+
+        // Prevent dropping onto itself
+        if (draggedNodeKey === targetNodeKey) return;
+
+        // Prevent dropping into its own descendant
+        const draggedItem = flattenedRows.find(
+          (
+            item
+          ): item is {
+            type: "data";
+            nodeKey: string;
+            row: Record<string, unknown>;
+          } =>
+            item.type === "data" &&
+            "nodeKey" in item &&
+            item.nodeKey === draggedNodeKey
+        );
+
+        const targetItem = flattenedRows.find(
+          (
+            item
+          ): item is {
+            type: "data";
+            nodeKey: string;
+            row: Record<string, unknown>;
+          } =>
+            item.type === "data" &&
+            "nodeKey" in item &&
+            item.nodeKey === targetNodeKey
+        );
+        if (!draggedItem || !targetItem) return;
+
+        // Don't allow dropping into a descendant
+        const descendantKeys = getAllDescendantNodeKeys(
+          draggedItem.row,
+          draggedNodeKey.split("/").slice(0, -1)
+        );
+        if (descendantKeys.includes(targetNodeKey)) return;
+
+        // Get source and target paths
+        const sourcePath = draggedNodeKey.split("/");
+        const targetPath = targetNodeKey.split("/");
+
+        // Move the node in the tree
+        const newTree = moveTreeNode(gridData, sourcePath, targetPath);
+
+        setGridData(newTree);
+
+        // Optionally update history for undo/redo
+        setHistory((prev) => ({
+          past: [...prev.past, prev.present],
+          present: newTree,
+          future: [],
+        }));
+
+        // Call the callback if provided
+        if (onRowDragEnd) {
+          onRowDragEnd({
+            draggedRow: draggedItem.row,
+            targetRow: targetItem.row,
+            newData: newTree,
+          });
+        }
+      },
+      [
+        rowDragManaged,
+        treeData,
+        flattenedRows,
+        gridData,
+        setGridData,
+        setHistory,
+        onRowDragEnd,
+      ]
+    );
 
     // ----------------------------
     // 10) Rendering: Flattened Virtual Rows
@@ -1325,6 +1592,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       if (col.valueFormatter) {
         return col.valueFormatter({ value, data: row });
       }
+
       if (col.editorType === "date" && value) {
         // Format as YYYY-MM-DD or your preferred format
         const date = new Date(value as string);
@@ -1334,6 +1602,97 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       }
       return value ? String(value) : "";
     };
+
+    const handleTreeRowsDrop = useCallback(
+      (draggedNodeKeys: string[], targetNodeKey: string) => {
+        if (!rowDragManaged || !treeData) return;
+        if (draggedNodeKeys.includes(targetNodeKey)) return;
+
+        let newTree = gridData;
+        draggedNodeKeys.forEach((draggedNodeKey) => {
+          const draggedItem = flattenedRows.find(
+            (
+              item
+            ): item is {
+              type: "data";
+              nodeKey: string;
+              row: Record<string, unknown>;
+            } =>
+              item.type === "data" &&
+              "nodeKey" in item &&
+              item.nodeKey === draggedNodeKey
+          );
+          const targetItem = flattenedRows.find(
+            (
+              item
+            ): item is {
+              type: "data";
+              nodeKey: string;
+              row: Record<string, unknown>;
+            } =>
+              item.type === "data" &&
+              "nodeKey" in item &&
+              item.nodeKey === targetNodeKey
+          );
+          if (!draggedItem || !targetItem) return;
+
+          const descendantKeys = getAllDescendantNodeKeys(
+            draggedItem.row,
+            draggedNodeKey.split("/").slice(0, -1)
+          );
+          if (descendantKeys.includes(targetNodeKey)) return;
+
+          const sourcePath = draggedNodeKey.split("/");
+          const targetPath = targetNodeKey.split("/");
+
+          newTree = moveTreeNode(newTree, sourcePath, targetPath);
+        });
+
+        setGridData(newTree);
+
+        setHistory((prev) => ({
+          past: [...prev.past, prev.present],
+          present: newTree,
+          future: [],
+        }));
+
+        if (onRowDragEnd) {
+          const draggedRowsArr = draggedNodeKeys
+            .map((key) => {
+              const item = flattenedRows.find(
+                (item) =>
+                  item.type === "data" &&
+                  "nodeKey" in item &&
+                  item.nodeKey === key
+              );
+              return item?.row;
+            })
+            .filter((row): row is Record<string, unknown> => !!row);
+
+          onRowDragEnd({
+            draggedRow: draggedRowsArr[0] ?? null, // required
+            draggedRows: draggedRowsArr, // optional
+            targetRow:
+              flattenedRows.find(
+                (item) =>
+                  item.type === "data" &&
+                  "nodeKey" in item &&
+                  item.nodeKey === targetNodeKey
+              )?.row ?? null,
+            newData: newTree,
+          });
+        }
+      },
+      [
+        rowDragManaged,
+        treeData,
+        flattenedRows,
+        gridData,
+        setGridData,
+        setHistory,
+        onRowDragEnd,
+      ]
+    );
 
     /**
      * Inline helper: Render a single "virtual item" row.
@@ -1442,18 +1801,40 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       // 2) Data Row
       if (item.type === "data") {
         const { row, indent, rowIndex } = item;
+
+        const hasChildren =
+          row?.children &&
+          Array.isArray(row.children) &&
+          row.children.length > 0;
+
         const isExpanded =
           rowIndex !== undefined ? expandedRows[rowIndex] : false;
+
         let expandButton: React.ReactNode = null;
 
-        if (
+        if (treeData && hasChildren && item.type === "data") {
+          const nodeKey = (item as { nodeKey: string }).nodeKey;
+
+          expandButton = (
+            <button
+              className="mr-2 focus:outline-none cursor-pointer"
+              onClick={() => toggleTreeRowExpand(nodeKey)}
+            >
+              {treeExpandedRows[nodeKey] ? (
+                <ChevronDown className="size-4 " />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+            </button>
+          );
+        } else if (
           row?.children &&
           Array.isArray(row.children) &&
           row.children.length > 0
         ) {
           expandButton = (
             <button
-              className="mr-2 focus:outline-none"
+              className="mr-2 focus:outline-none cursor-pointer"
               onClick={() =>
                 rowIndex !== undefined && toggleRowExpand(rowIndex)
               }
@@ -1474,6 +1855,12 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           typeof onCellValueChanged === "function" &&
           editingRowId === rowIndex;
 
+        // Get the nodeKey if availble - for dragging the selected rows in TREE data
+        const nodeKey =
+          treeData && "nodeKey" in item && typeof item.nodeKey === "string"
+            ? item.nodeKey
+            : undefined;
+
         return (
           <TableRow
             key={virtualRow.key}
@@ -1490,6 +1877,10 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             className={cn({
               "bg-blue-100": rowIndex !== undefined && selectedRows[rowIndex],
               "hover:bg-gray-100": true,
+              "border-b-[3px] border-indigo-200":
+                item.type === "data" &&
+                "nodeKey" in item &&
+                dragOverRowKey === item.nodeKey,
             })}
             onClick={() =>
               onRowClick?.({
@@ -1497,20 +1888,117 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 rowIndex: rowIndex as number,
               })
             }
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOverRowKey(null);
+            }}
+            onDragStart={(e) => {
+              e.stopPropagation();
+              e.dataTransfer.effectAllowed = "move";
+              // We'll use nodeKey as the identifier
+              // Only set if item is a data row and has nodeKey
+              if (
+                item.type === "data" &&
+                "nodeKey" in item &&
+                typeof item.nodeKey === "string"
+              ) {
+                // e.dataTransfer.setData("dragNodeKey", item.nodeKey);
+                const selectedNodeKeys = Object.keys(selectedRows).filter(
+                  (key) => selectedRows[key]
+                );
+                const dragKeys =
+                  selectedNodeKeys.length > 0 &&
+                  selectedNodeKeys.includes(item.nodeKey)
+                    ? selectedNodeKeys
+                    : [item.nodeKey];
+                e.dataTransfer.setData(
+                  "dragNodeKeys",
+                  JSON.stringify(dragKeys)
+                );
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDragOverRowKey(null);
+              // const draggedNodeKey = e.dataTransfer.getData("dragNodeKey");
+              // if (
+              //   !draggedNodeKey ||
+              //   !(
+              //     item.type === "data" &&
+              //     "nodeKey" in item &&
+              //     typeof item.nodeKey === "string"
+              //   ) ||
+              //   draggedNodeKey === item.nodeKey
+              // )
+              //   return;
+              // handleTreeRowDrop?.(draggedNodeKey, item.nodeKey);
+
+              const draggedNodeKeysRaw = e.dataTransfer.getData("dragNodeKeys");
+              if (
+                !draggedNodeKeysRaw ||
+                !(
+                  item.type === "data" &&
+                  "nodeKey" in item &&
+                  typeof item.nodeKey === "string"
+                )
+              )
+                return;
+              const draggedNodeKeys: string[] = JSON.parse(draggedNodeKeysRaw);
+              if (draggedNodeKeys.includes(item.nodeKey)) return;
+              handleTreeRowsDrop?.(draggedNodeKeys, item.nodeKey);
+            }}
+            // make the row draggable in TREE data where we've a selected
+            draggable={
+              treeData && rowSelection && !!nodeKey && selectedRows[nodeKey]
+            } // allow drag if selected
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+
+              if (
+                item.type === "data" &&
+                "nodeKey" in item &&
+                typeof item.nodeKey === "string"
+              ) {
+                setDragOverRowKey(item.nodeKey);
+              }
+            }}
           >
             {rowSelection && (
               <TableCell key={`checkbox-cell-${rowIndex}`} className="w-[50px]">
                 <div className="w-[30px] flex justify-center items-center">
                   <Checkbox
+                    // checked={
+                    //   rowIndex !== undefined ? !!selectedRows[rowIndex] : false
+                    // }
+
                     checked={
-                      rowIndex !== undefined ? !!selectedRows[rowIndex] : false
+                      treeData && rowSelection.treeSelectChildren
+                        ? item.type === "data" &&
+                          "nodeKey" in item &&
+                          !!selectedRows[item.nodeKey]
+                        : rowIndex !== undefined && !!selectedRows[rowIndex]
                     }
+                    // onCheckedChange={(checked: boolean) => {
+                    //   handleRowCheckboxChange(rowIndex, checked);
+                    // }}
                     onCheckedChange={(checked: boolean) => {
-                      handleRowCheckboxChange(rowIndex, checked);
+                      if (treeData && rowSelection.treeSelectChildren) {
+                        if (item.type === "data" && "nodeKey" in item) {
+                          handleTreeRowCheckboxChange(item.nodeKey, checked);
+                        }
+                      } else {
+                        if (rowIndex !== undefined) {
+                          handleFlatRowCheckboxChange(rowIndex, checked);
+                        }
+                      }
                     }}
-                    onClick={(e: { stopPropagation: () => void }) => {
-                      e.stopPropagation();
-                    }}
+                    onClick={(e: any) => e.stopPropagation()}
+                    // onClick={(e: { stopPropagation: () => void }) => {
+                    //   e.stopPropagation();
+                    // }}
                     className={"border-1 border-gray-400 cursor-pointer"}
                   />
                 </div>
@@ -1580,6 +2068,68 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 editingCell &&
                 editingCell.rowIndex === rowIndex &&
                 editingCell.field === col.field;
+
+              // Indent first column for treeData
+              if (colIndex === 0 && treeData) {
+                return (
+                  <TableCell
+                    key={`${colIndex}-${col.field}`}
+                    style={{
+                      ...getCellWidth(col),
+                      overflow: "hidden",
+                      cursor: col.editable ? "pointer" : "text",
+                      textWrap: "initial",
+                    }}
+                  >
+                    <div
+                      className="flex items-center w-full transition-all duration-300 ease-in-out"
+                      style={{ paddingLeft: `${(indent || 0) * 20}px` }}
+                    >
+                      {expandButton}
+
+                      {/* Row Drag Handle */}
+                      {rowDragManaged && treeData && (
+                        <span
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            e.dataTransfer.effectAllowed = "move";
+                            // We'll use nodeKey as the identifier
+                            // Only set if item is a data row and has nodeKey
+                            if (
+                              item.type === "data" &&
+                              "nodeKey" in item &&
+                              typeof item.nodeKey === "string"
+                            ) {
+                              e.dataTransfer.setData(
+                                "dragNodeKey",
+                                item.nodeKey
+                              );
+                            }
+                          }}
+                          className="cursor-grab mr-2 px-1 py-0.5 rounded hover:bg-gray-200 active:cursor-grabbing"
+                          title="Drag to move"
+                          tabIndex={-1}
+                          aria-label="Drag row"
+                        >
+                          <GripHorizontal className="size-4" />
+                        </span>
+                      )}
+                      {/* {formatCellValue(cellValue, row || {}, col)}*/}
+                      <span>
+                        {formatCellValue(cellValue, row || {}, col)}
+                        {showChildCount &&
+                          Array.isArray(row?.children) &&
+                          row.children.length > 0 && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              ({row.children.length})
+                            </span>
+                          )}
+                      </span>
+                    </div>
+                  </TableCell>
+                );
+              }
 
               // If it's the first column and there's master detail, show expand button
               if (colIndex === 0 && masterDetail) {
@@ -1800,6 +2350,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 </TableCell>
               );
             })}
+            {addRowConfig && <TableCell className="w-[50px]"></TableCell>}
           </TableRow>
         );
       }
@@ -1857,6 +2408,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                       columnDefs={detailGridOptions}
                       data={detailData[parentIndex]}
                       isChild={true}
+                      parentRow={item.parentRow} // <-- pass parentRow
                     />
                   </div>
                 ) : (
@@ -1964,20 +2516,12 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       </div>
     );
 
-    /**
-     * Handles the selection and deselection of a single row in the DataGrid.
-     * Updates the selectedRows state based on the checkbox state.
-     */
-    const handleRowCheckboxChange = (
-      rowIndex: number | undefined,
+    // Handler for flat (non-tree) row selection
+    const handleFlatRowCheckboxChange = (
+      rowIndex: number | string,
       checked: boolean
     ) => {
-      if (rowIndex === undefined) return;
       setSelectedRows((prev) => {
-        if (rowSelection && rowSelection.mode === "single") {
-          // Only allow one row to be selected at a time
-          return checked ? { [rowIndex]: true } : {};
-        }
         const updated = { ...prev };
         if (checked) {
           updated[rowIndex] = true;
@@ -2003,9 +2547,19 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       }
       if (checked) {
         const allSelected: Record<string, boolean> = {};
-        gridData.forEach((row, idx) => {
-          allSelected[idx] = true;
-        });
+        if (treeData && rowSelection?.treeSelectChildren) {
+          // Select all nodeKeys for treeData
+          flattenedRows
+            .filter((item) => item.type === "data")
+            .forEach((item) => {
+              allSelected[(item as { nodeKey: string }).nodeKey] = true;
+            });
+        } else {
+          // Flat data: select by index
+          gridData.forEach((row, idx) => {
+            allSelected[idx] = true;
+          });
+        }
         setSelectedRows(allSelected);
       } else {
         setSelectedRows({});
@@ -2013,14 +2567,50 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     };
 
     // Add useEffect to call onRowSelectionChange when selectedRows changes
+    // Call getSelectedRows callback with selected data
+    // Update the useEffect for getSelectedRows:
     useEffect(() => {
       if (rowSelection && typeof rowSelection?.getSelectedRows === "function") {
-        const selectedData = Object.entries(selectedRows)
-          .filter(([, isSelected]) => isSelected)
-          .map(([index]) => data[+index]);
-        rowSelection?.getSelectedRows(selectedData);
+        let selectedData: any[] = [];
+        if (treeData && rowSelection.treeSelectChildren) {
+          selectedData = flattenedRows
+            .filter(
+              (
+                item
+              ): item is {
+                type: "data";
+                nodeKey: string;
+                row: Record<string, unknown>;
+              } =>
+                item.type === "data" &&
+                "nodeKey" in item &&
+                !!selectedRows[(item as any).nodeKey]
+            )
+            .map((item) => item.row);
+        } else {
+          selectedData = Object.entries(selectedRows)
+            .filter(([, isSelected]) => isSelected)
+            .map(
+              ([index]) =>
+                data[+index] ||
+                data.find(
+                  (row: any, i: number) =>
+                    row.id === index || row.documentNumber === index
+                )
+            );
+        }
+        rowSelection?.getSelectedRows(selectedData.filter(Boolean));
       }
-    }, [selectedRows]);
+    }, [selectedRows, flattenedRows, treeData, rowSelection, data]);
+
+    // useEffect(() => {
+    //   if (rowSelection && typeof rowSelection?.getSelectedRows === "function") {
+    //     const selectedData = Object.entries(selectedRows)
+    //       .filter(([, isSelected]) => isSelected)
+    //       .map(([index]) => data[+index]);
+    //     rowSelection?.getSelectedRows(selectedData);
+    //   }
+    // }, [selectedRows]);
 
     const [search, setSearch] = useState("");
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2089,6 +2679,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       if (!addRowConfig) return;
 
       const handleKeyDown = (e: KeyboardEvent) => {
+        console.log("yes");
         const isCtrlOrMeta = e.ctrlKey || e.metaKey;
         const isPlusKey = e.key === "+" || e.key === "="; // some keyboards require Shift + = for +
 
@@ -2103,6 +2694,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [addRowConfig]);
+
     // Update the main grid container JSX
     return (
       <div className="relative w-[100%] h-full">
@@ -2140,22 +2732,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             </div>
           </div>
         )}
-
-        {addRowConfig && (
-          <div className="flex justify-end px-4 py-2">
-            <button
-              className="bg-green-600 cursor-pointer text-white px-4 py-1 hover:bg-green-700 transition rounded-full"
-              onClick={() => {
-                const initial = generateInitialRowData();
-                setNewRowData(initial);
-                setIsAddingRow(true); // explicitly here instead
-              }}
-            >
-              + Add New Row
-            </button>
-          </div>
-        )}
-
         {/* Pivot Columns  */}
         {/* Pivot panel for managing pivot columns */}
         {/* Only render if pivotMode is enabled */}
@@ -2188,7 +2764,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             <Table
               ref={tableRef}
               className={cn(
-                "hiddenw-full border-b border-l border-r border-gray-200"
+                "w-full border-b border-l border-r border-gray-200"
               )}
               style={{
                 tableLayout,
@@ -2372,9 +2948,48 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                         {rowSelection.mode === "multiple" && (
                           <Checkbox
                             checked={
-                              Object.keys(selectedRows).length > 0 &&
-                              Object.keys(selectedRows).length ===
-                                gridData.length
+                              treeData && rowSelection?.treeSelectChildren
+                                ? flattenedRows
+                                    .filter(
+                                      (
+                                        item
+                                      ): item is {
+                                        type: "data";
+                                        nodeKey: string;
+                                      } =>
+                                        item.type === "data" &&
+                                        "nodeKey" in item
+                                    )
+                                    .every((item) => selectedRows[item.nodeKey])
+                                : Object.keys(selectedRows).length > 0 &&
+                                  Object.keys(selectedRows).length ===
+                                    gridData.length
+                            }
+                            data-indeterminate={
+                              treeData && rowSelection?.treeSelectChildren
+                                ? (() => {
+                                    const dataRows = flattenedRows.filter(
+                                      (
+                                        item
+                                      ): item is {
+                                        type: "data";
+                                        nodeKey: string;
+                                      } =>
+                                        item.type === "data" &&
+                                        "nodeKey" in item
+                                    );
+                                    return (
+                                      dataRows.some(
+                                        (item) => selectedRows[item.nodeKey]
+                                      ) &&
+                                      !dataRows.every(
+                                        (item) => selectedRows[item.nodeKey]
+                                      )
+                                    );
+                                  })()
+                                : Object.keys(selectedRows).length > 0 &&
+                                  Object.keys(selectedRows).length <
+                                    gridData.length
                             }
                             onCheckedChange={handleHeaderCheckboxChange}
                             className={
@@ -2505,6 +3120,34 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                         </TableHead>
                       );
                     })}
+                  {addRowConfig && (
+                    <TableHead
+                      className="w-[50px]"
+                      style={{
+                        paddingLeft: "12px",
+                        paddingTop: "6px",
+                      }}
+                    >
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            className="cursor-pointer text-white text-lg hover:bg-[#d3d3d3] transition rounded-md"
+                            style={{
+                              color: "#a0a2a4",
+                            }}
+                            onClick={() => {
+                              const initial = generateInitialRowData();
+                              setNewRowData(initial);
+                              setIsAddingRow(true); // explicitly here instead
+                            }}
+                          >
+                            <Plus strokeWidth={1.5} />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="">+ Add Row</TooltipContent>
+                      </Tooltip>
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
 
@@ -2512,69 +3155,90 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               <TableBody>
                 {newRowData && isAddingRow && (
                   <TableRow className="bg-yellow-50">
-                    {displayColumns
-                      .filter((col) => !!col.editorType) // ✅ only render if editorType exists
-                      .map((col) => (
-                        <TableCell
-                          key={`new-${col.field}`}
-                          className="border-2 p-0"
-                        >
-                          <CellEditor
-                            columnDef={{
-                              editorType: col.editorType! as EditorType,
-                              editorParams: col.editorParams,
-                            }}
-                            value={
-                              newRowData[col.field] as
-                                | string
-                                | number
-                                | boolean
-                                | Date
-                                | null
-                            }
-                            onChange={(val) =>
-                              setNewRowData((prev) => ({
-                                ...prev,
-                                [col.field]: val,
-                              }))
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                const isValid = displayColumns
-                                  .filter((c) => !!c.editorType)
-                                  .every((col) => {
-                                    const value = newRowData[col.field];
-                                    return (
-                                      value !== null &&
-                                      value !== undefined &&
-                                      value !== ""
-                                    );
-                                  });
+                    {rowSelection && (
+                      <TableCell className="w-[50px]">
+                        <div className="w-[30px] flex justify-center items-center"></div>
+                      </TableCell>
+                    )}
+                    {displayColumns.map((col) => (
+                      <TableCell
+                        key={`new-${col.field}`}
+                        className="border-2 py-1"
+                      >
+                        <CellEditor
+                          columnDef={{
+                            editorType: (col.editorType ||
+                              "text") as EditorType, // Default to "text"
 
-                                if (isValid) {
-                                  addRowConfig?.onAdd?.(newRowData);
-                                  setNewRowData({});
-                                  setIsAddingRow(false);
-                                } else {
-                                  // Optional: show error UI
-
-                                  alert(
-                                    "Please fill all required fields before saving."
+                            editorParams: col.editorParams,
+                          }}
+                          value={
+                            newRowData[col.field] as
+                              | string
+                              | number
+                              | boolean
+                              | Date
+                              | null
+                          }
+                          onChange={(val) =>
+                            setNewRowData((prev) => ({
+                              ...prev,
+                              [col.field]: val,
+                            }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const isValid = displayColumns
+                                .filter((c) => !!c.editorType)
+                                .every((col) => {
+                                  const value = newRowData[col.field];
+                                  return (
+                                    value !== null &&
+                                    value !== undefined &&
+                                    value !== ""
                                   );
-                                  console.warn(
-                                    "Please fill all required fields before saving."
-                                  );
-                                }
-                              }
+                                });
 
-                              if (e.key === "Escape") {
+                              if (isValid) {
+                                addRowConfig?.onAdd?.(newRowData, parentRow);
                                 setNewRowData({});
                                 setIsAddingRow(false);
+                              } else {
+                                // Optional: show error UI
+
+                                alert(
+                                  "Please fill all required fields before saving."
+                                );
+                                console.warn(
+                                  "Please fill all required fields before saving."
+                                );
                               }
-                            }}
-                          />
-                        </TableCell>
-                      ))}
+                            }
+
+                            if (e.key === "Escape") {
+                              setNewRowData({});
+                              setIsAddingRow(false);
+                            }
+                          }}
+                        />
+                      </TableCell>
+                    ))}
+                    {addRowConfig && (
+                      <TableCell className="flex justify-center items-center">
+                        <button
+                          className="cursor-pointer text-white text-lg transition rounded-md"
+                          style={{
+                            color: "red",
+                          }}
+                          onClick={() => {
+                            setNewRowData({});
+                            setIsAddingRow(false);
+                          }}
+                        >
+                          <SquareX strokeWidth={1.5} />
+                        </button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 )}
               </TableBody>
@@ -2709,14 +3373,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                           maximumFractionDigits: 2,
                         })}
                       </span>
-                      {/* <span className="font-bold">
-                        {aggregationStats[col.field]?.toLocaleString(
-                          undefined,
-                          {
-                            maximumFractionDigits: 2,
-                          }
-                        )}
-                      </span> */}
                     </li>
                   ))}
               </ul>
