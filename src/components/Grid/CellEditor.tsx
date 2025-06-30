@@ -85,7 +85,7 @@ const NumberEditor = ({
   step,
   placeholder,
 }: NumberEditorProps) => {
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();

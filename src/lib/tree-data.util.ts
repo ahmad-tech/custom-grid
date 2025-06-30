@@ -267,3 +267,72 @@ export function moveTreeNode(
 
   return clonedTree;
 }
+
+/**
+ * Checks if a node or any of its descendants match the filter function.
+ * @param node The current node to check.
+ * @param filterFn The filter function to apply to each node.
+ * @param childrenField The field name for children (default: "children").
+ * @returns True if the node or any descendant matches, false otherwise.
+ */
+export function nodeOrDescendantMatches(
+  node: Record<string, unknown>,
+  filterFn: (row: Record<string, unknown>) => boolean,
+  childrenField: string = "children"
+): boolean {
+  if (filterFn(node)) return true;
+  if (Array.isArray(node[childrenField])) {
+    return (node[childrenField] as any[]).some((child) =>
+      nodeOrDescendantMatches(child, filterFn, childrenField)
+    );
+  }
+  return false;
+}
+
+// Recursively filter tree data --- for tree data filtering on parent level
+
+/**
+ * Recursively filters a tree structure.
+ * - If a node matches the filter, it is kept with all its children.
+ * - If any descendant matches, the parent is kept with all its children.
+ * - If neither the node nor any descendant matches, the node is removed.
+ *
+ * This is useful for tree UIs where you want to show the full path and all siblings
+ * when any child matches the filter.
+ *
+ * @param nodes The array of tree nodes to filter.
+ * @param filterFn The filter function to apply to each node.
+ * @param childrenField The field name for children (default: "children").
+ * @returns The filtered tree array.
+ */
+export function filterTreeData(
+  nodes: any[],
+  filterFn: (row: Record<string, unknown>) => boolean,
+  childrenField: string = "children"
+): any[] {
+  return nodes
+    .map((node) => {
+      let children = node[childrenField];
+      let filteredChildren: any[] = [];
+      if (Array.isArray(children)) {
+        filteredChildren = filterTreeData(children, filterFn, childrenField);
+      }
+      // If this node matches, keep it with all its children
+      if (filterFn(node)) {
+        return {
+          ...node,
+          [childrenField]: children,
+        };
+      }
+      // If any child matches, keep this node with all its children (not just filtered)
+      if (filteredChildren.length > 0) {
+        return {
+          ...node,
+          [childrenField]: children,
+        };
+      }
+      // Otherwise, discard this node
+      return null;
+    })
+    .filter(Boolean);
+}

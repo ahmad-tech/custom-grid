@@ -91,7 +91,7 @@ export function pivotAndAggregateByGroup(
       return;
     }
     const [first, ...rest] = keys;
-    for (const val of pivotValuesMap[first]) {
+    for (const val of Array.from(pivotValuesMap[first])) {
       generateCombinations(rest, { ...prefix, [first]: val });
     }
   }
@@ -231,7 +231,7 @@ export function pivotAndAggregateByGroup(
   for (const [
     groupKey,
     { childrenMap, totalAggregations, totalMedalsRaw, avgTracking },
-  ] of groupMap.entries()) {
+  ] of Array.from(groupMap.entries())) {
     for (const col of columnDefs) {
       if (col.aggFunc === "avg") {
         const stats = avgTracking[col.field];

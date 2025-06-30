@@ -10,8 +10,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { ColumnDef } from "@/types/grid";
-import { useEffect } from "react";
-import React from "react";
+import React, { useEffect } from "react";
 
 // Export utility functions
 export const IsDateType = (type?: string) => type === "date";

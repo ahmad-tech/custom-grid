@@ -1,5 +1,5 @@
 import React from "react";
-import { GripVertical, X } from "lucide-react";
+import { GripHorizontal, X } from "lucide-react";
 import type { ColumnDef } from "@/types/grid";
 
 interface PivotPanelProps {
@@ -35,7 +35,7 @@ export const PivotPanel: React.FC<PivotPanelProps> = ({
                 className="table-row-pop flex items-center justify-between bg-gray-300 px-2 rounded-full"
               >
                 <span key={field} className="flex items-center">
-                  <GripVertical className="size-3 mr-1" />
+                  <GripHorizontal className="size-4 mr-1" />
                   {col?.headerName}
                 </span>
 

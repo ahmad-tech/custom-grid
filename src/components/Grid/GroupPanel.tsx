@@ -1,5 +1,5 @@
 import React from "react";
-import { GripVertical, X } from "lucide-react";
+import { GripHorizontal, X } from "lucide-react";
 import type { ColumnDef } from "@/types/grid";
 
 interface GroupPanelProps {
@@ -43,7 +43,7 @@ export const GroupPanel: React.FC<GroupPanelProps> = ({
               className="flex items-center justify-between bg-gray-700 px-2 py-1 rounded-full"
             >
               <span className="flex items-center">
-                <GripVertical className="w-3 h-3 mr-1" />
+                <GripHorizontal className="w-3 h-3 mr-1" />
                 {col?.headerName}
               </span>
 

@@ -66,6 +66,7 @@ import {
 import {
   buildTreeData,
   computeAggregationsForTree,
+  filterTreeData,
   findNodeByNodeKey,
   flattenTree,
   getAllDescendantNodeKeys,
@@ -102,7 +103,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       editType,
       onCellValueChanged,
       onRowValueChanged,
-      fullRowButtons,
       treeData,
       getDataPath,
       treeDataChildrenField,
@@ -742,6 +742,90 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
     // Update filteredData to use filter types
     const filteredData = useMemo(() => {
+      if (treeData) {
+        return filterTreeData(
+          gridData,
+          (row) => {
+            return Object.keys(debouncedFilters).every((field) => {
+              if (!debouncedFilters[field]) return true;
+              const col = columns.find((c) => c.field === field);
+              if (!col) return true;
+
+              const cellValue = row[field];
+              const filterValue = debouncedFilters[field];
+              const filterType =
+                filterTypes[field] || GetDefaultFilterType(col);
+
+              // Handle null/undefined values
+              if (cellValue == null) return false;
+
+              // Number filtering
+              if (col.type === "number") {
+                const numValue = Number(cellValue);
+                const filterNum = Number(filterValue);
+
+                switch (filterType) {
+                  case "equals":
+                    return numValue === filterNum;
+                  case "greaterThan":
+                    return numValue > filterNum;
+                  case "lessThan":
+                    return numValue < filterNum;
+                  case "between": {
+                    const [min, max] = filterValue.split(",").map(Number);
+                    return numValue >= min && numValue <= max;
+                  }
+                  default:
+                    return true;
+                }
+              }
+
+              // Date filtering
+              if (col.type === "date") {
+                const dateValue = new Date(cellValue as string);
+                const filterDate = new Date(filterValue);
+
+                switch (filterType) {
+                  case "equals":
+                    return (
+                      dateValue.toDateString() === filterDate.toDateString()
+                    );
+                  case "before":
+                    return dateValue < filterDate;
+                  case "after":
+                    return dateValue > filterDate;
+                  case "between": {
+                    const [start, end] = filterValue
+                      .split(",")
+                      .map((d) => new Date(d));
+                    return dateValue >= start && dateValue <= end;
+                  }
+                  default:
+                    return true;
+                }
+              }
+
+              // Text comparison (default)
+              const cellString = String(cellValue).toLowerCase();
+              const filterString = filterValue.toLowerCase();
+
+              switch (filterType) {
+                case "equals":
+                  return cellString === filterString;
+                case "startsWith":
+                  return cellString.startsWith(filterString);
+                case "endsWith":
+                  return cellString.endsWith(filterString);
+                case "contains":
+                default:
+                  return cellString.includes(filterString);
+              }
+            });
+          },
+          treeDataChildrenField || "children"
+        );
+      }
+
       // If server-side filtering is enabled, just return all gridData (parent will handle filtering)
       if (isServerSide) {
         return gridData;
@@ -825,7 +909,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       });
 
       return filtered;
-    }, [gridData, debouncedFilters, filterTypes, columns]);
+    }, [
+      gridData,
+      debouncedFilters,
+      filterTypes,
+      columns,
+      treeData,
+      treeDataChildrenField,
+      isServerSide,
+    ]);
 
     // ----------------------------
     // 2) Sorting
@@ -1321,9 +1413,9 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         parentIndex?: number;
       }> = [];
 
-      if (treeData && gridData && Array.isArray(gridData)) {
+      if (treeData && filteredData && Array.isArray(filteredData)) {
         // Use the flattenTree helper for tree data
-        return flattenTree(gridData, treeExpandedRows, 0, { current: 0 });
+        return flattenTree(filteredData, treeExpandedRows, 0, { current: 0 });
       }
 
       const dataToRender = filteredData;
@@ -2004,7 +2096,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 </div>
               </TableCell>
             )}
-
             {displayColumns.map((col, colIndex) => {
               if (isFullRowEditing && col.editable) {
                 return (
@@ -2350,7 +2441,55 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 </TableCell>
               );
             })}
-            {addRowConfig && <TableCell className="w-[50px]"></TableCell>}
+
+            {addRowConfig &&
+              masterDetail &&
+              Array.isArray(row?.children) &&
+              row.children.length < 1 && (
+                <TableCell
+                  className="w-[50px] p-0"
+                  style={{
+                    verticalAlign: "middle",
+                    textAlign: "center",
+                  }}
+                >
+                  <button
+                    className="cursor-pointer text-green-600 text-lg transition rounded-md flex items-center justify-center w-full h-full"
+                    title="Add child"
+                    style={{
+                      minHeight: "40px",
+                    }}
+                    onClick={() => {
+                      const detailCols =
+                        columnDefs.detailGridOptions?.columns || [];
+                      const emptyChild: Record<string, unknown> = {};
+                      detailCols.forEach((col: any) => {
+                        emptyChild[col.field] = "";
+                      });
+                      if (typeof onDataChange === "function") {
+                        const updatedRow = {
+                          ...row,
+                          children: [
+                            ...(Array.isArray(row.children)
+                              ? row.children
+                              : []),
+                            emptyChild,
+                          ],
+                        };
+                        onDataChange(updatedRow, row, "children");
+                      }
+                      if (typeof rowIndex !== "undefined") {
+                        setExpandedRows((prev) => ({
+                          ...prev,
+                          [rowIndex]: true,
+                        }));
+                      }
+                    }}
+                  >
+                    <Plus strokeWidth={1.5} />
+                  </button>
+                </TableCell>
+              )}
           </TableRow>
         );
       }
@@ -2372,6 +2511,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               tableLayout: "fixed",
               top: 0,
             }}
+            className="hidden"
           >
             <TableCell
               colSpan={displayColumns.length}
@@ -2621,15 +2761,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     }, [setEditingRowId, setEditingRowData]);
 
     // to  start editing the second row - full row edit mode
-    const handleEditSecondRow = useCallback(() => {
-      const rowIndex = 1;
-      // 2nd row means index 1 (0-based)
+    // const handleEditSecondRow = useCallback(() => {
+    //   const rowIndex = 1;
+    //   // 2nd row means index 1 (0-based)
 
-      const row = gridData[rowIndex];
-      if (!row) return;
-      setEditingRowId(rowIndex);
-      setEditingRowData(row);
-    }, [gridData, setEditingRowId, setEditingRowData]);
+    //   const row = gridData[rowIndex];
+    //   if (!row) return;
+    //   setEditingRowId(rowIndex);
+    //   setEditingRowData(row);
+    // }, [gridData, setEditingRowId, setEditingRowData]);
 
     // Add this above your return statement
     const aggregationStats = useMemo(() => {
@@ -2675,10 +2815,9 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
     // Add keyboard event listener for adding a new row when we have addRowConfig CTRL + A
     useEffect(() => {
-      if (!addRowConfig) return;
+      if (!addRowConfig || masterDetail) return;
 
       const handleKeyDown = (e: KeyboardEvent) => {
-        console.log("yes");
         const isCtrlOrMeta = e.ctrlKey || e.metaKey;
         const isPlusKey = e.key === "+" || e.key === "="; // some keyboards require Shift + = for +
 
@@ -3119,6 +3258,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                         </TableHead>
                       );
                     })}
+
                   {addRowConfig && (
                     <TableHead
                       className="w-[50px]"

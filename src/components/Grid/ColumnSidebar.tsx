@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { GripVertical, List, Sigma } from "lucide-react";
+import { List, Sigma, GripHorizontal } from "lucide-react";
 import type { ColumnDef } from "@/types/grid";
 import { GroupPanel } from "./GroupPanel";
 
@@ -221,7 +221,7 @@ const ColumnSidebar: React.FC<ColumnSidebarProps> = ({
                       }}
                       className={undefined}
                     />
-                    <GripVertical
+                    <GripHorizontal
                       style={{
                         width: "1rem",
                         height: "1rem",
@@ -406,7 +406,7 @@ const ColumnSidebar: React.FC<ColumnSidebarProps> = ({
                       cursor: "pointer",
                     }}
                   />
-                  <GripVertical
+                  <GripHorizontal
                     style={{
                       width: "1rem",
                       height: "1rem",
