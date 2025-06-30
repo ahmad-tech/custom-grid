@@ -6,7 +6,7 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { debounce } from 'lodash';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon, Calendar, XCircle, ChevronLeftIcon, ChevronRightIcon, Clock, CalendarIcon, CircleCheck, CircleAlert, X, Search, ChevronFirst, ChevronLeft, ChevronRight, ChevronLast, GripVertical, Sigma, List, ChevronUp, ChevronDown, ChevronsUpDown, ListFilter, Plus, SquareX, GripHorizontal } from 'lucide-react';
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon, Calendar, XCircle, ChevronLeftIcon, ChevronRightIcon, Clock, CalendarIcon, CircleCheck, CircleAlert, X, Search, ChevronFirst, ChevronLeft, ChevronRight, ChevronLast, GripHorizontal, Sigma, List, ChevronUp, ChevronDown, ChevronsUpDown, ListFilter, Plus, SquareX } from 'lucide-react';
 import { PulseLoader } from 'react-spinners';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { setYear, getYear, addMonths, subMonths, format, startOfYear, endOfYear, startOfMonth, setMonth, endOfMonth, getMonth, setHours, startOfHour, endOfHour, setMinutes, startOfMinute, endOfMinute, setMilliseconds, setSeconds, startOfDay, endOfDay, addHours, subHours, parse, isValid } from 'date-fns';
@@ -2505,7 +2505,7 @@ var GroupPanel = function (_a) {
       className: "flex items-center justify-between bg-gray-700 px-2 py-1 rounded-full"
     }, /*#__PURE__*/React__default.createElement("span", {
       className: "flex items-center"
-    }, /*#__PURE__*/React__default.createElement(GripVertical, {
+    }, /*#__PURE__*/React__default.createElement(GripHorizontal, {
       className: "w-3 h-3 mr-1"
     }), col === null || col === void 0 ? void 0 : col.headerName), /*#__PURE__*/React__default.createElement("button", {
       onClick: function () {
@@ -2679,7 +2679,7 @@ var ColumnSidebar = function (_a) {
         cursor: "pointer"
       },
       className: undefined
-    }), /*#__PURE__*/React__default.createElement(GripVertical, {
+    }), /*#__PURE__*/React__default.createElement(GripHorizontal, {
       style: {
         width: "1rem",
         height: "1rem",
@@ -2834,7 +2834,7 @@ var ColumnSidebar = function (_a) {
         borderColor: "#9ca3af",
         cursor: "pointer"
       }
-    }), /*#__PURE__*/React__default.createElement(GripVertical, {
+    }), /*#__PURE__*/React__default.createElement(GripHorizontal, {
       style: {
         width: "1rem",
         height: "1rem",
@@ -2897,8 +2897,8 @@ var PivotPanel = function (_a) {
     }, /*#__PURE__*/React__default.createElement("span", {
       key: field,
       className: "flex items-center"
-    }, /*#__PURE__*/React__default.createElement(GripVertical, {
-      className: "size-3 mr-1"
+    }, /*#__PURE__*/React__default.createElement(GripHorizontal, {
+      className: "size-4 mr-1"
     }), col === null || col === void 0 ? void 0 : col.headerName), /*#__PURE__*/React__default.createElement("button", {
       onClick: function () {
         return setPivotColumns(pivotColumns.filter(function (f) {
@@ -2974,7 +2974,7 @@ function pivotAndAggregateByGroup(data, groupBy, pivotColumns, columnDefs) {
     }
     var first = keys[0],
       rest = keys.slice(1);
-    for (var _i = 0, _b = pivotValuesMap[first]; _i < _b.length; _i++) {
+    for (var _i = 0, _b = Array.from(pivotValuesMap[first]); _i < _b.length; _i++) {
       var val = _b[_i];
       generateCombinations(rest, __assign(__assign({}, prefix), (_a = {}, _a[first] = val, _a)));
     }
@@ -3096,7 +3096,7 @@ function pivotAndAggregateByGroup(data, groupBy, pivotColumns, columnDefs) {
     }
   }
   // Final pass to compute group-level averages
-  for (var _b = 0, _c = groupMap.entries(); _b < _c.length; _b++) {
+  for (var _b = 0, _c = Array.from(groupMap.entries()); _b < _c.length; _b++) {
     var _d = _c[_b],
       groupKey = _d[0],
       _e = _d[1],
@@ -3357,6 +3357,44 @@ function moveTreeNode(tree, sourcePath, targetPath) {
   insertNode(clonedTree, targetPath, nodeToMove);
   return clonedTree;
 }
+// Recursively filter tree data --- for tree data filtering on parent level
+/**
+ * Recursively filters a tree structure.
+ * - If a node matches the filter, it is kept with all its children.
+ * - If any descendant matches, the parent is kept with all its children.
+ * - If neither the node nor any descendant matches, the node is removed.
+ *
+ * This is useful for tree UIs where you want to show the full path and all siblings
+ * when any child matches the filter.
+ *
+ * @param nodes The array of tree nodes to filter.
+ * @param filterFn The filter function to apply to each node.
+ * @param childrenField The field name for children (default: "children").
+ * @returns The filtered tree array.
+ */
+function filterTreeData(nodes, filterFn, childrenField) {
+  if (childrenField === void 0) {
+    childrenField = "children";
+  }
+  return nodes.map(function (node) {
+    var _a, _b;
+    var children = node[childrenField];
+    var filteredChildren = [];
+    if (Array.isArray(children)) {
+      filteredChildren = filterTreeData(children, filterFn, childrenField);
+    }
+    // If this node matches, keep it with all its children
+    if (filterFn(node)) {
+      return __assign(__assign({}, node), (_a = {}, _a[childrenField] = children, _a));
+    }
+    // If any child matches, keep this node with all its children (not just filtered)
+    if (filteredChildren.length > 0) {
+      return __assign(__assign({}, node), (_b = {}, _b[childrenField] = children, _b));
+    }
+    // Otherwise, discard this node
+    return null;
+  }).filter(Boolean);
+}
 
 var DataGrid = /*#__PURE__*/forwardRef(function (_a, ref) {
   var _b = _a.data,
@@ -3389,9 +3427,8 @@ var DataGrid = /*#__PURE__*/forwardRef(function (_a, ref) {
     serverPivoting = _a.serverPivoting,
     editType = _a.editType,
     onCellValueChanged = _a.onCellValueChanged,
-    onRowValueChanged = _a.onRowValueChanged;
-    _a.fullRowButtons;
-    var treeData = _a.treeData,
+    onRowValueChanged = _a.onRowValueChanged,
+    treeData = _a.treeData,
     getDataPath = _a.getDataPath,
     treeDataChildrenField = _a.treeDataChildrenField,
     _j = _a.groupDefaultExpanded,
@@ -3947,6 +3984,82 @@ var DataGrid = /*#__PURE__*/forwardRef(function (_a, ref) {
   }, []);
   // Update filteredData to use filter types
   var filteredData = useMemo(function () {
+    if (treeData) {
+      return filterTreeData(gridData, function (row) {
+        return Object.keys(debouncedFilters).every(function (field) {
+          if (!debouncedFilters[field]) return true;
+          var col = columns.find(function (c) {
+            return c.field === field;
+          });
+          if (!col) return true;
+          var cellValue = row[field];
+          var filterValue = debouncedFilters[field];
+          var filterType = filterTypes[field] || GetDefaultFilterType(col);
+          // Handle null/undefined values
+          if (cellValue == null) return false;
+          // Number filtering
+          if (col.type === "number") {
+            var numValue = Number(cellValue);
+            var filterNum = Number(filterValue);
+            switch (filterType) {
+              case "equals":
+                return numValue === filterNum;
+              case "greaterThan":
+                return numValue > filterNum;
+              case "lessThan":
+                return numValue < filterNum;
+              case "between":
+                {
+                  var _a = filterValue.split(",").map(Number),
+                    min = _a[0],
+                    max = _a[1];
+                  return numValue >= min && numValue <= max;
+                }
+              default:
+                return true;
+            }
+          }
+          // Date filtering
+          if (col.type === "date") {
+            var dateValue = new Date(cellValue);
+            var filterDate = new Date(filterValue);
+            switch (filterType) {
+              case "equals":
+                return dateValue.toDateString() === filterDate.toDateString();
+              case "before":
+                return dateValue < filterDate;
+              case "after":
+                return dateValue > filterDate;
+              case "between":
+                {
+                  var _b = filterValue.split(",").map(function (d) {
+                      return new Date(d);
+                    }),
+                    start = _b[0],
+                    end = _b[1];
+                  return dateValue >= start && dateValue <= end;
+                }
+              default:
+                return true;
+            }
+          }
+          // Text comparison (default)
+          var cellString = String(cellValue).toLowerCase();
+          var filterString = filterValue.toLowerCase();
+          switch (filterType) {
+            case "equals":
+              return cellString === filterString;
+            case "startsWith":
+              return cellString.startsWith(filterString);
+            case "endsWith":
+              return cellString.endsWith(filterString);
+            case "contains":
+            default:
+              return cellString.includes(filterString);
+          }
+        });
+      }, treeDataChildrenField || "children");
+    }
     // If server-side filtering is enabled, just return all gridData (parent will handle filtering)
     if (isServerSide) {
       return gridData;
@@ -4027,7 +4140,7 @@ var DataGrid = /*#__PURE__*/forwardRef(function (_a, ref) {
       });
     });
     return filtered;
-  }, [gridData, debouncedFilters, filterTypes, columns]);
+  }, [gridData, debouncedFilters, filterTypes, columns, treeData, treeDataChildrenField, isServerSide]);
   // ----------------------------
   // 2) Sorting
   // ----------------------------
@@ -4439,9 +4552,9 @@ var DataGrid = /*#__PURE__*/forwardRef(function (_a, ref) {
   }, [filteredData, groupedColumns, columns, isServerSide, data]);
   var flattenedRows = useMemo(function () {
     var flatList = [];
-    if (treeData && gridData && Array.isArray(gridData)) {
+    if (treeData && filteredData && Array.isArray(filteredData)) {
       // Use the flattenTree helper for tree data
-      return flattenTree(gridData, treeExpandedRows, 0, {
+      return flattenTree(filteredData, treeExpandedRows, 0, {
         current: 0
       });
     }
@@ -5105,9 +5218,41 @@ var DataGrid = /*#__PURE__*/forwardRef(function (_a, ref) {
           var result = col.tooltipField && tooltipValue != null && tooltipValue !== "" ? tooltipValue : col.rowGroup ? "" : formatCellValue(cellValue, row_2 || {}, col);
           return result != null ? String(result) : ""; // Ensure it's a valid string or ReactNode
         }()))) : formatCellValue(cellValue, row_2 || {}, col))));
-      }), addRowConfig && /*#__PURE__*/React__default.createElement(TableCell, {
-        className: "w-[50px]"
-      }));
+      }), addRowConfig && masterDetail && Array.isArray(row_2 === null || row_2 === void 0 ? void 0 : row_2.children) && row_2.children.length < 1 && (/*#__PURE__*/React__default.createElement(TableCell, {
+        className: "w-[50px] p-0",
+        style: {
+          verticalAlign: "middle",
+          textAlign: "center"
+        }
+      }, /*#__PURE__*/React__default.createElement("button", {
+        className: "cursor-pointer text-green-600 text-lg transition rounded-md flex items-center justify-center w-full h-full",
+        title: "Add child",
+        style: {
+          minHeight: "40px"
+        },
+        onClick: function () {
+          var _a;
+          var detailCols = ((_a = columnDefs.detailGridOptions) === null || _a === void 0 ? void 0 : _a.columns) || [];
+          var emptyChild = {};
+          detailCols.forEach(function (col) {
+            emptyChild[col.field] = "";
+          });
+          if (typeof onDataChange === "function") {
+            var updatedRow = __assign(__assign({}, row_2), {
+              children: __spreadArray(__spreadArray([], Array.isArray(row_2.children) ? row_2.children : [], true), [emptyChild], false)
+            });
+            onDataChange(updatedRow, row_2, "children");
+          }
+          if (typeof rowIndex_1 !== "undefined") {
+            setExpandedRows(function (prev) {
+              var _a;
+              return __assign(__assign({}, prev), (_a = {}, _a[rowIndex_1] = true, _a));
+            });
+          }
+        }
+      }, /*#__PURE__*/React__default.createElement(Plus, {
+        strokeWidth: 1.5
+      })))));
     }
     // 3) Detail Row
     if (item.type === "detail") {
@@ -5123,7 +5268,8 @@ var DataGrid = /*#__PURE__*/forwardRef(function (_a, ref) {
           display: "table",
           tableLayout: "fixed",
           top: 0
-        }
+        },
+        className: "hidden"
       }, /*#__PURE__*/React__default.createElement(TableCell, {
         colSpan: displayColumns.length,
         style: {
@@ -5316,14 +5462,14 @@ var DataGrid = /*#__PURE__*/forwardRef(function (_a, ref) {
     setEditingRowData(null);
   }, [setEditingRowId, setEditingRowData]);
   // to  start editing the second row - full row edit mode
-  useCallback(function () {
-    var rowIndex = 1;
-    // 2nd row means index 1 (0-based)
-    var row = gridData[rowIndex];
-    if (!row) return;
-    setEditingRowId(rowIndex);
-    setEditingRowData(row);
-  }, [gridData, setEditingRowId, setEditingRowData]);
+  // const handleEditSecondRow = useCallback(() => {
+  //   const rowIndex = 1;
+  //   // 2nd row means index 1 (0-based)
+  //   const row = gridData[rowIndex];
+  //   if (!row) return;
+  //   setEditingRowId(rowIndex);
+  //   setEditingRowData(row);
+  // }, [gridData, setEditingRowId, setEditingRowData]);
   // Add this above your return statement
   var aggregationStats = useMemo(function () {
     if (isServerSide) return [];
@@ -5365,9 +5511,8 @@ var DataGrid = /*#__PURE__*/forwardRef(function (_a, ref) {
   }, [columns, gridData, isServerSide]);
   // Add keyboard event listener for adding a new row when we have addRowConfig CTRL + A
   useEffect(function () {
-    if (!addRowConfig) return;
+    if (!addRowConfig || masterDetail) return;
     var handleKeyDown = function (e) {
-      console.log("yes");
       var isCtrlOrMeta = e.ctrlKey || e.metaKey;
       var isPlusKey = e.key === "+" || e.key === "="; // some keyboards require Shift + = for +
       if (isCtrlOrMeta && isPlusKey) {

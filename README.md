@@ -1,23 +1,27 @@
 # CIS Grid Tool
 
-A powerful and flexible data grid component for React applications with support for sorting, filtering, pagination, grouping, pivoting, editing, and more.
+A powerful and flexible data grid component for React applications with support for sorting, filtering, pagination, grouping, pivoting, editing, tree data, row dragging, and more.
 
 ## Features
 
-- Client-side and server-side data handling
-- Column customization with various data types
-- Sorting and filtering
-- Pagination with configurable page sizes
-- Row grouping and aggregation
-- Master-detail views
-- Row selection (single/multiple)
-- Custom cell rendering and tooltips
-- Loading states
-- **Pivoting** - Transform data into pivot tables
-- **Server-side pivoting** - Handle pivot operations on the server
-- **Inline editing** - Cell and full-row editing modes
-- **Add row functionality** - Inline row addition
+- **Client-side and server-side data handling** - Choose between client-side or server-side row models
+- **Column customization** - Various data types (text, number, date, boolean, select, time, dateTime)
+- **Advanced editing** - Cell-level and full-row editing with custom editors
+- **Sorting and filtering** - Multi-column sorting and advanced filtering capabilities
+- **Pagination** - Configurable page sizes with server-side pagination support
+- **Row grouping and aggregation** - Group data and apply aggregation functions
+- **Master-detail views** - Expandable rows with nested grid data
+- **Row selection** - Single and multiple row selection with tree selection support
+- **Custom cell rendering** - Custom cell renderers, tooltips, and value formatters
+- **Loading states** - Built-in loading indicators with custom messages
+- **Pivoting** - Transform data into pivot tables with server-side pivot support
+- **Tree data support** - Hierarchical data display with expandable nodes
+- **Row dragging** - Drag and drop rows for reordering (tree data)
+- **Inline row addition** - Add new rows directly in the grid
 - **Custom aggregation functions** - Define your own aggregation logic
+- **Value getters and setters** - Custom data transformation and editing
+- **Grand total rows** - Display totals at top, bottom, or none
+- **Group by panel** - Interactive grouping interface
 
 ## Installation
 
@@ -25,9 +29,13 @@ A powerful and flexible data grid component for React applications with support 
 npm install @cis/grid-tool
 # or
 yarn add @cis/grid-tool
+# or
+pnpm add @cis/grid-tool
 ```
 
 ## Usage
+
+### Basic Grid
 
 ```tsx
 import { DataGrid } from '@cis/grid-tool';
@@ -83,6 +91,45 @@ const MyGrid = () => {
       rowSelection={{
         mode: 'multiple',
         getSelectedRows: (selectedRows) => console.log('Selected:', selectedRows)
+      }}
+    />
+  );
+};
+```
+
+### Tree Data Grid
+
+```tsx
+const TreeDataGrid = () => {
+  const columnDefs = {
+    columns: [
+      {
+        field: 'name',
+        headerName: 'Name',
+        type: 'text',
+        editable: true
+      },
+      {
+        field: 'size',
+        headerName: 'Size',
+        type: 'number',
+        aggFunc: 'sum'
+      }
+    ]
+  };
+
+  return (
+    <DataGrid
+      data={treeData}
+      columnDefs={columnDefs}
+      treeData={true}
+      groupDefaultExpanded={1}
+      getDataPath={(data) => data.path}
+      treeDataChildrenField="children"
+      rowDragManaged={true}
+      showChildCount={true}
+      onRowDragEnd={({ draggedRow, targetRow, newData }) => {
+        console.log('Row dragged:', { draggedRow, targetRow, newData });
       }}
     />
   );
@@ -153,7 +200,7 @@ interface DataGridProps {
   pagination?: IPagination;
   
   // Row Selection
-  rowSelection?: RowSelection;
+  rowSelection?: IRowSelection;
   
   // Master-Detail
   masterDetail?: boolean;
@@ -185,8 +232,19 @@ interface DataGridProps {
   }) => void;
   fullRowButtons?: boolean;
   
-  // Add Row Configuration
-  addRowConfig?: AddRowConfig;
+  // Tree Data
+  treeData?: boolean;
+  groupDefaultExpanded?: number; // -1 = all expanded, 0 = none, 1 = first, etc.
+  getDataPath?: (data: Record<string, unknown>) => string[];
+  treeDataChildrenField?: 'children' | 'path' | 'parentId';
+  rowDragManaged?: boolean;
+  showChildCount?: boolean;
+  onRowDragEnd?: (params: {
+    draggedRow: Record<string, unknown>;
+    targetRow: Record<string, unknown> | null;
+    newData: Record<string, unknown>[];
+    draggedRows?: Record<string, unknown>[];
+  }) => void;
   
   // Events
   onDataChange?: (
@@ -207,12 +265,13 @@ interface DataGridProps {
 
 ### Row Selection
 
-Configure row selection with:
+Configure row selection with tree selection support:
 
 ```typescript
-interface RowSelection {
+interface IRowSelection {
   mode: 'single' | 'multiple';
   getSelectedRows?: (data: Record<string, unknown>[]) => void;
+  treeSelectChildren?: boolean; // Select all children when parent is selected (treeData only)
 }
 ```
 
@@ -285,11 +344,14 @@ interface IAggCol {
 
 ### Add Row Configuration
 
-Configure inline row addition:
+Configure inline row addition with parent support:
 
 ```typescript
 interface AddRowConfig {
-  onAdd?: (newRow: Record<string, unknown>) => void;
+  onAdd?: (
+    newRow: Record<string, unknown>,
+    parentId?: string | number | null
+  ) => void;
 }
 ```
 
@@ -313,6 +375,26 @@ interface GroupObject {
 
 ## Advanced Features
 
+### Tree Data
+
+Enable hierarchical data display:
+
+```tsx
+<DataGrid
+  data={treeData}
+  columnDefs={columnDefs}
+  treeData={true}
+  groupDefaultExpanded={1}
+  getDataPath={(data) => data.path}
+  treeDataChildrenField="children"
+  rowDragManaged={true}
+  showChildCount={true}
+  onRowDragEnd={({ draggedRow, targetRow, newData }) => {
+    // Handle row drag end
+  }}
+/>
+```
+
 ### Pivoting
 
 Enable pivot mode to transform your data into pivot tables:
@@ -327,14 +409,18 @@ Enable pivot mode to transform your data into pivot tables:
     serverPivotDataColumns: pivotColumns,
     serverPivotCols: ['category', 'region'],
     serverAggCols: [{ field: 'sales', aggFunc: 'sum' }],
-    // ... other pivot configuration
+    serverGroupedCol: 'product',
+    setServerGroupedCols: setGroupedCol,
+    setServerPivotColsFn: setPivotCols,
+    setServerAggColsFn: setAggCols,
+    setServerPivotDataColumns: setPivotColumns
   }}
 />
 ```
 
 ### Editing
 
-Configure editing behavior:
+Configure editing behavior with full row editing support:
 
 ```tsx
 <DataGrid
@@ -361,7 +447,8 @@ const customAggFuncs = {
   customAvg: ({ values }) => {
     const validValues = values.filter(v => v != null);
     return validValues.length > 0 ? validValues.reduce((sum, val) => sum + val, 0) / validValues.length : 0;
-  }
+  },
+  customCount: ({ values }) => values.filter(v => v != null).length
 };
 
 <DataGrid
@@ -369,6 +456,47 @@ const customAggFuncs = {
   columnDefs={columnDefs}
   aggFuncs={customAggFuncs}
 />
+```
+
+### Master-Detail Views
+
+Configure expandable rows with nested grid data:
+
+```tsx
+<DataGrid
+  data={myData}
+  columnDefs={columnDefs}
+  masterDetail={true}
+  detailGridOptions={detailColumnDefs}
+  getDetailRowData={({ data, successCallback }) => {
+    // Fetch detail data for the row
+    fetchDetailData(data.id).then(detailData => {
+      successCallback(detailData);
+    });
+  }}
+/>
+```
+
+### Value Getters and Formatters
+
+Use custom value transformation:
+
+```tsx
+const columnDefs = {
+  columns: [
+    {
+      field: 'fullName',
+      headerName: 'Full Name',
+      valueGetter: ({ data }) => `${data.firstName} ${data.lastName}`,
+      valueFormatter: ({ value, data }) => `${value} (${data.department})`
+    },
+    {
+      field: 'salary',
+      headerName: 'Salary',
+      valueFormatter: ({ value }) => `$${value.toLocaleString()}`
+    }
+  ]
+};
 ```
 
 ## Contributing

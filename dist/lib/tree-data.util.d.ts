@@ -45,4 +45,27 @@ export declare function findNodeByNodeKey(flattenedRows: any[], nodeKey: string)
  * @returns A new tree with the node moved.
  */
 export declare function moveTreeNode(tree: any[], sourcePath: string[], targetPath: string[]): any[];
+/**
+ * Checks if a node or any of its descendants match the filter function.
+ * @param node The current node to check.
+ * @param filterFn The filter function to apply to each node.
+ * @param childrenField The field name for children (default: "children").
+ * @returns True if the node or any descendant matches, false otherwise.
+ */
+export declare function nodeOrDescendantMatches(node: Record<string, unknown>, filterFn: (row: Record<string, unknown>) => boolean, childrenField?: string): boolean;
+/**
+ * Recursively filters a tree structure.
+ * - If a node matches the filter, it is kept with all its children.
+ * - If any descendant matches, the parent is kept with all its children.
+ * - If neither the node nor any descendant matches, the node is removed.
+ *
+ * This is useful for tree UIs where you want to show the full path and all siblings
+ * when any child matches the filter.
+ *
+ * @param nodes The array of tree nodes to filter.
+ * @param filterFn The filter function to apply to each node.
+ * @param childrenField The field name for children (default: "children").
+ * @returns The filtered tree array.
+ */
+export declare function filterTreeData(nodes: any[], filterFn: (row: Record<string, unknown>) => boolean, childrenField?: string): any[];
 //# sourceMappingURL=tree-data.util.d.ts.map
