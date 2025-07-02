@@ -28,11 +28,19 @@ A powerful and flexible data grid component for React applications with support 
 ## Installation
 
 ```bash
-npm install @cis/grid-tool
+npm install grid-tool-internal
 # or
-yarn add @cis/grid-tool
+yarn add grid-tool-internal
 # or
-pnpm add @cis/grid-tool
+pnpm add grid-tool-internal
+```
+
+## CSS Import
+
+After installation, you need to import the CSS file to apply the grid styles:
+
+```js
+import 'grid-tool-internal/dist/grid-tool.css';
 ```
 
 ## Usage
@@ -40,7 +48,8 @@ pnpm add @cis/grid-tool
 ### Basic Grid
 
 ```tsx
-import { DataGrid } from '@cis/grid-tool';
+import { DataGrid } from 'grid-tool-internal';
+import 'grid-tool-internal/dist/grid-tool.css';
 
 const MyGrid = () => {
   const columnDefs = {
@@ -102,6 +111,9 @@ const MyGrid = () => {
 ### Tree Data Grid
 
 ```tsx
+import { DataGrid } from 'grid-tool-internal';
+import 'grid-tool-internal/dist/grid-tool.css';
+
 const TreeDataGrid = () => {
   const columnDefs = {
     columns: [
@@ -443,6 +455,9 @@ interface GroupObject {
 Enable hierarchical data display:
 
 ```tsx
+import { DataGrid } from 'grid-tool-internal';
+import 'grid-tool-internal/dist/grid-tool.css';
+
 <DataGrid
   data={treeData}
   columnDefs={columnDefs}
@@ -463,6 +478,9 @@ Enable hierarchical data display:
 Enable pivot mode to transform your data into pivot tables:
 
 ```tsx
+import { DataGrid } from 'grid-tool-internal';
+import 'grid-tool-internal/dist/grid-tool.css';
+
 <DataGrid
   data={myData}
   columnDefs={columnDefs}
@@ -486,6 +504,9 @@ Enable pivot mode to transform your data into pivot tables:
 Configure editing behavior with enhanced full row editing support:
 
 ```tsx
+import { DataGrid } from 'grid-tool-internal';
+import 'grid-tool-internal/dist/grid-tool.css';
+
 const columnDefs = {
   columns: [
     {
@@ -525,6 +546,9 @@ const columnDefs = {
 Define custom aggregation functions:
 
 ```tsx
+import { DataGrid } from 'grid-tool-internal';
+import 'grid-tool-internal/dist/grid-tool.css';
+
 const customAggFuncs = {
   customSum: ({ values }) => values.reduce((sum, val) => sum + (val || 0), 0),
   customAvg: ({ values }) => {
@@ -546,6 +570,9 @@ const customAggFuncs = {
 Configure expandable rows with nested grid data:
 
 ```tsx
+import { DataGrid } from 'grid-tool-internal';
+import 'grid-tool-internal/dist/grid-tool.css';
+
 <DataGrid
   data={myData}
   columnDefs={columnDefs}
@@ -587,6 +614,9 @@ const columnDefs = {
 Configure data export functionality:
 
 ```tsx
+import { DataGrid } from 'grid-tool-internal';
+import 'grid-tool-internal/dist/grid-tool.css';
+
 <DataGrid
   data={myData}
   columnDefs={columnDefs}

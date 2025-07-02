@@ -11,55 +11,57 @@ const pkg = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url))
 );
 
-export default {
-  input: "src/index.ts",
-  output: [
-    {
-      file: pkg.main,
-      format: "cjs",
-      sourcemap: true,
-    },
-    {
-      file: pkg.module,
-      format: "esm",
-      sourcemap: true,
-    },
-  ],
-  external: [
-    ...Object.keys(pkg.peerDependencies || {}),
-    ...Object.keys(pkg.dependencies || {}),
-  ],
-  plugins: [
-    alias({
-      entries: [
-        { find: "@", replacement: path.resolve("src") },
-        { find: "@lib", replacement: path.resolve("src/lib") },
-        { find: "@components", replacement: path.resolve("src/components") },
-        { find: "@types", replacement: path.resolve("src/types") },
-      ],
-    }),
-    nodeResolve({
-      extensions: [".js", ".jsx", ".ts", ".tsx", ".css"],
-    }),
-    babel({
-      babelHelpers: "bundled",
-      presets: ["@babel/preset-react"],
-      extensions: [".js", ".jsx", ".ts", ".tsx"],
-    }),
-    postcss({
-      extensions: [".css"],
-      minimize: true,
-      inject: {
-        insertAt: "top",
+export default [
+  // Main bundle (JS)
+  {
+    input: "src/index.ts",
+    output: [
+      {
+        file: pkg.main,
+        format: "cjs",
+        sourcemap: true,
       },
-    }),
-    commonjs(),
-    typescript({
-      tsconfig: "./tsconfig.json",
-      sourceMap: true,
-      inlineSources: true,
-      resolveJsonModule: true,
-      exclude: ["node_modules", "dist"],
-    }),
-  ],
-};
+      {
+        file: pkg.module,
+        format: "esm",
+        sourcemap: true,
+      },
+    ],
+    external: [
+      ...Object.keys(pkg.peerDependencies || {}),
+      ...Object.keys(pkg.dependencies || {}),
+    ],
+    plugins: [
+      alias({
+        entries: [
+          { find: "@", replacement: path.resolve("src") },
+          { find: "@lib", replacement: path.resolve("src/lib") },
+          { find: "@components", replacement: path.resolve("src/components") },
+          { find: "@types", replacement: path.resolve("src/types") },
+        ],
+      }),
+      nodeResolve({
+        extensions: [".js", ".jsx", ".ts", ".tsx", ".css"],
+      }),
+      babel({
+        babelHelpers: "bundled",
+        presets: ["@babel/preset-react"],
+        extensions: [".js", ".jsx", ".ts", ".tsx"],
+      }),
+      postcss({
+        extract: "grid-tool.css",
+        minimize: true,
+        config: "./postcss.config.cjs",
+        inject: false,
+      }),
+      commonjs(),
+      typescript({
+        tsconfig: "./tsconfig.json",
+        sourceMap: true,
+        inlineSources: true,
+        resolveJsonModule: true,
+        exclude: ["node_modules", "dist"],
+      }),
+    ],
+  },
+];
