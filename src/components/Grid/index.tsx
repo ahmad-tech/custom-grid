@@ -35,7 +35,6 @@ import type {
   ColumnDef,
   GroupObject,
   IFilterModelItem,
-  ColumnDefProps,
 } from "@/types/grid";
 import { PulseLoader } from "react-spinners";
 import { debounce } from "lodash";
@@ -59,6 +58,7 @@ import ServerPagination from "./ServerPagination";
 import ColumnSidebar from "./ColumnSidebar";
 import { PivotPanel } from "./PivotPanel";
 import {
+  getCombinations,
   IGroupedPivotedData,
   IPivotColumnDef,
   pivotAndAggregateByGroup,
@@ -73,6 +73,7 @@ import {
   getParentNodeKey,
   moveTreeNode,
 } from "@/lib/tree-data.util";
+import { exportDataToCSV } from "@/lib/csv.util";
 
 export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
   (
@@ -100,9 +101,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       onRowGroup,
       pivotMode = false,
       serverPivoting,
-      editType,
-      onCellValueChanged,
-      onRowValueChanged,
+
       treeData,
       getDataPath,
       treeDataChildrenField,
@@ -111,10 +110,16 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       onRowDragEnd,
       showChildCount,
       parentRow,
+      suppressExcelExport = false, //for data export
+      csvFileName,
     }: DataGridProps,
     ref: React.Ref<HTMLDivElement>
   ) => {
-    const { addRowConfig } = columnDefs;
+    const { addRowConfig, fullRowEditConfig } = columnDefs;
+
+    const { editType, onCellValueChanged, onRowValueChanged } =
+      fullRowEditConfig || {};
+
     const [treeExpandedRows, setTreeExpandedRows] = useState<
       Record<string, boolean>
     >({});
@@ -176,8 +181,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     // To apply pivot on like game, year etc
     const [pivotColumns, setPivotColumns] =
       useState<string[]>(defaultPivotColumns);
-
-    const [_columnDefs, _setColumnDefs] = useState<ColumnDefProps>(columnDefs);
 
     // sort data on pivoting mode
     const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(
@@ -252,12 +255,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         })
       );
 
-      if (fromMap.length > 0) {
-        setServerAggColsFn ? setServerAggColsFn(fromMap) : _setAggCols(fromMap);
-      } else if (aggCols && _aggCols.length === 0 && aggCols.length > 0) {
-        setServerAggColsFn
-          ? setServerAggColsFn(aggCols || [])
-          : _setAggCols(aggCols || []);
+      const newAggCols =
+        fromMap.length > 0
+          ? fromMap
+          : _aggCols.length === 0 && aggCols && aggCols.length > 0
+            ? aggCols
+            : null;
+
+      if (newAggCols) {
+        (setServerAggColsFn ?? _setAggCols)(newAggCols);
       }
     }, [columnAggFnMap, enablePivot, aggCols, setServerAggColsFn]);
 
@@ -299,7 +305,10 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       serverPivotedData,
     ]);
 
-    function getPivotDataColumns(data: any[], pivotColumns: string[]) {
+    function getPivotDataColumns(
+      data: Record<string, unknown>[],
+      pivotColumns: string[]
+    ) {
       if (!enablePivot) return;
 
       if (serverPivotDataColumns) {
@@ -381,11 +390,12 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         while (parentKey !== null) {
           const parent = findNodeByNodeKey(flattenedRows, parentKey);
           if (parent && parent.row && parent.row.children) {
-            const allChildrenKeys = parent.row.children.map((child: any) =>
-              [...parentKey!.split("/"), child.name].join("/")
+            const allChildrenKeys = parent.row.children.map(
+              (child: { name: string }) =>
+                [...parentKey!.split("/"), child.name].join("/")
             );
             const allSelected = allChildrenKeys.every(
-              (key: any) => updated[key]
+              (key: string) => updated[key]
             );
             if (allSelected && checked) {
               updated[parentKey] = true;
@@ -636,13 +646,22 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       if (treeData && gridData && Array.isArray(gridData) && !treeInit) {
         let initialExpanded: Record<string, boolean> = {};
 
-        const getNodeKey = (node: any, parentPath: string[] = []) => {
+        const getNodeKey = (
+          node: { name: string },
+          parentPath: string[] = []
+        ) => {
           const nodeName =
             typeof node.name === "string" ? node.name : String(node.name ?? "");
           return [...parentPath, nodeName].join("/");
         };
 
-        const expandAll = (nodes: any[], parentPath: string[] = []) => {
+        const expandAll = (
+          nodes: {
+            children: { name: string }[];
+            name: string;
+          }[],
+          parentPath: string[] = []
+        ) => {
           nodes.forEach((node) => {
             const nodeName =
               typeof node.name === "string"
@@ -651,13 +670,22 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             const nodeKey = getNodeKey(node, parentPath);
             if (node.children && node.children.length > 0) {
               initialExpanded[nodeKey] = true;
-              expandAll(node.children, [...parentPath, nodeName]);
+              expandAll(
+                node.children as {
+                  children: { name: string }[];
+                  name: string;
+                }[],
+                [...parentPath, nodeName]
+              );
             }
           });
         };
 
         const expandLevels = (
-          nodes: any[],
+          nodes: {
+            children: { name: string }[];
+            name: string;
+          }[],
           levels: number,
           parentPath: string[] = []
         ) => {
@@ -670,18 +698,32 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             const nodeKey = getNodeKey(node, parentPath);
             if (node.children && node.children.length > 0) {
               initialExpanded[nodeKey] = true;
-              expandLevels(node.children, levels - 1, [
-                ...parentPath,
-                nodeName,
-              ]);
+              expandLevels(
+                node.children as {
+                  children: { name: string }[];
+                  name: string;
+                }[],
+                levels - 1,
+                [...parentPath, nodeName]
+              );
             }
           });
         };
-
         if (groupDefaultExpanded === -1) {
-          expandAll(gridData);
+          expandAll(
+            gridData as {
+              children: { name: string }[];
+              name: string;
+            }[]
+          );
         } else if (groupDefaultExpanded > 0) {
-          expandLevels(gridData, groupDefaultExpanded);
+          expandLevels(
+            gridData as {
+              children: { name: string }[];
+              name: string;
+            }[],
+            groupDefaultExpanded
+          );
         }
         setTreeExpandedRows(initialExpanded);
         setTreeInit(true);
@@ -1189,8 +1231,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
     useEffect(() => {
       // Update detailData for all expanded rows when gridData changes
-      setDetailData((prev) => {
-        const updated: typeof prev = {};
+      setDetailData(() => {
+        const updated: Record<number, Record<string, unknown>[]> = {};
         Object.keys(expandedRows).forEach((rowIndexStr) => {
           const rowIndex = Number(rowIndexStr);
           const row = gridData[rowIndex];
@@ -2087,7 +2129,9 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                         }
                       }
                     }}
-                    onClick={(e: any) => e.stopPropagation()}
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
+                      e.stopPropagation()
+                    }
                     // onClick={(e: { stopPropagation: () => void }) => {
                     //   e.stopPropagation();
                     // }}
@@ -2116,7 +2160,13 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           const updatedRow = { ...row, ...editingRowData };
-                          onRowValueChanged?.({ data: updatedRow });
+                          onRowValueChanged?.({
+                            data: updatedRow,
+                            parentId:
+                              isChild && parentRow
+                                ? parentRow._id || parentRow.id
+                                : undefined,
+                          });
                           setEditingRowData({});
                           setEditingRowId(null);
                         }
@@ -2463,7 +2513,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                       const detailCols =
                         columnDefs.detailGridOptions?.columns || [];
                       const emptyChild: Record<string, unknown> = {};
-                      detailCols.forEach((col: any) => {
+                      detailCols.forEach((col: ColumnDef) => {
                         emptyChild[col.field] = "";
                       });
                       if (typeof onDataChange === "function") {
@@ -2548,7 +2598,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                       columnDefs={detailGridOptions}
                       data={detailData[parentIndex]}
                       isChild={true}
-                      parentRow={item.parentRow} // <-- pass parentRow
+                      parentRow={item.parentRow}
                     />
                   </div>
                 ) : (
@@ -2711,7 +2761,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
     // Update the useEffect for getSelectedRows:
     useEffect(() => {
       if (rowSelection && typeof rowSelection?.getSelectedRows === "function") {
-        let selectedData: any[] = [];
+        let selectedData: Record<string, unknown>[] = [];
         if (treeData && rowSelection.treeSelectChildren) {
           selectedData = flattenedRows
             .filter(
@@ -2724,7 +2774,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               } =>
                 item.type === "data" &&
                 "nodeKey" in item &&
-                !!selectedRows[(item as any).nodeKey]
+                !!selectedRows[item.nodeKey]
             )
             .map((item) => item.row);
         } else {
@@ -2734,7 +2784,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               ([index]) =>
                 data[+index] ||
                 data.find(
-                  (row: any) => row.id === index || row.documentNumber === index
+                  (row) => row.id === index || row.documentNumber === index
                 )
             );
         }
@@ -2824,6 +2874,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         if (isCtrlOrMeta && isPlusKey) {
           e.preventDefault(); // prevent browser zoom
           const initial = generateInitialRowData();
+
           setNewRowData(initial);
           setIsAddingRow(true);
         }
@@ -2833,34 +2884,33 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [addRowConfig]);
 
-    // Update the main grid container JSX
+    // Inside the DataGrid component, before the return statement:
+    const handleExportCSV = () => {
+      // Use filteredData and displayColumns for export
+      exportDataToCSV(
+        filteredData,
+        displayColumns.map((col) => ({
+          field: col.field,
+          headerName: col.headerName || col.field,
+        })),
+        csvFileName
+      );
+    };
+
     return (
       <div className="relative w-[100%] h-full">
-        {/* {editType === "fullRow" && fullRowButtons && (
-          <div className="gap-2 flex items-center mb-2">
-            {[
-              {
-                title: "Start Editing Line 2",
-                onClick: handleEditSecondRow,
-                hide: gridData?.length < 2,
-              },
-              {
-                title: "Stop Editing",
-                onClick: handleStopEditing,
-                hide: false,
-              },
-            ]
-              .filter((btn) => !btn.hide)
-              .map((btn) => (
-                <button
-                  className="border px-[12px] py-[5px] cursor-pointer text-[12px] rounded-[6px]"
-                  onClick={btn.onClick}
-                >
-                  {btn.title}
-                </button>
-              ))}
+        {/* Export CSV Button */}
+        {suppressExcelExport && (
+          <div className="mb-2 flex justify-end">
+            <button
+              className="cursor-pointer px-4 py-1 bg-indigo-400 text-white rounded-sm hover:bg-indigo-700 transition"
+              onClick={handleExportCSV}
+            >
+              Download CSV
+            </button>
           </div>
-        )} */}
+        )}
+
         {/* Loading Overlay */}
         {loading && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
@@ -2922,13 +2972,14 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                           (obj) => Object.values(obj)[0]
                         );
 
-                        const combinations = pivotValues.reduce(
-                          (acc, values) =>
-                            acc.flatMap((comb) =>
-                              values.map((val) => [...comb, val])
-                            ),
-                          [[]] as any[]
-                        );
+                        // const combinations = pivotValues.reduce(
+                        //   (acc, values) =>
+                        //     acc.flatMap((comb) =>
+                        //       values.map((val) => [...comb, val])
+                        //     ),
+                        //   [[]] as any[]
+                        // );
+                        const combinations = getCombinations(pivotValues);
 
                         const activeAggFields = serverPivoting
                           ? new Set(serverAggCols?.map((def) => def.field))
@@ -2970,7 +3021,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                                       colSpan={repeatFactor}
                                       className="text-center border border-gray-200 bg-gray-100 px-4 py-2"
                                     >
-                                      {value}
+                                      {value?.toString()}
                                     </th>
                                   );
                                   lastValue = value;
@@ -3261,10 +3312,10 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
                   {addRowConfig && (
                     <TableHead
-                      className="w-[50px]"
                       style={{
                         paddingLeft: "12px",
                         paddingTop: "6px",
+                        width: "50px",
                       }}
                     >
                       <Tooltip>
@@ -3290,8 +3341,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 </TableRow>
               </TableHeader>
 
-              {/* Adding new row in the table start here */}
               <TableBody>
+                {/* Adding new row in the table end here */}
                 {newRowData && isAddingRow && (
                   <TableRow className="bg-yellow-50">
                     {rowSelection && (
@@ -3381,8 +3432,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                   </TableRow>
                 )}
               </TableBody>
-              {/* Adding new row in the table end here */}
-
               {(!enablePivot ||
                 (!serverPivoting && pivotColumns.length < 1) ||
                 (serverPivoting && !serverPivotCols?.length)) && (

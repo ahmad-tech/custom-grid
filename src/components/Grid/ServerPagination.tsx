@@ -1,11 +1,12 @@
 import { IPagination } from "@/types/grid";
-import React from "react";
+
 import {
   ChevronRight,
   ChevronLeft,
   ChevronLast,
   ChevronFirst,
 } from "lucide-react";
+import React from "react";
 
 interface IServerPaginationProps {
   paginationProps: IPagination;

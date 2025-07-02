@@ -7,7 +7,7 @@ export function buildTreeData(
   flatData: Record<string, unknown>[],
   treeDataChildrenField: TreeDataChildrenFieldType,
   getDataPath?: (data: Record<string, unknown>) => string[] // optional for parentId/children formats
-): any[] {
+) {
   if (!flatData || flatData.length === 0) return [];
 
   // Case 1: Already has children (tree structure)
@@ -17,12 +17,12 @@ export function buildTreeData(
 
   // Case 2: path[] based (AG Grid-style treeData)
   if (treeDataChildrenField === "path" && getDataPath) {
-    const root: any[] = [];
-    const pathMap = new Map<string, any>();
+    const root: Record<string, unknown>[] = [];
+    const pathMap = new Map<string, Record<string, unknown>>();
 
     flatData.forEach((row) => {
       const path = getDataPath(row);
-      let parent: any = null;
+      let parent: Record<string, unknown> | null = null;
 
       path.forEach((segment, idx) => {
         const currentPath = path.slice(0, idx + 1).join("/");
@@ -50,17 +50,17 @@ export function buildTreeData(
 
   // Case 3: Flat parentId/id structure
   if (treeDataChildrenField === "parentId") {
-    const idMap = new Map<string, any>();
-    const root: any[] = [];
+    const idMap = new Map<string, Record<string, unknown>>();
+    const root: Record<string, unknown>[] = [];
 
     flatData.forEach((row) => {
-      const id = String((row as any).id); // safely cast to string
+      const id = String(row.id); // safely cast to string
       idMap.set(id, { ...row, children: [] });
     });
 
     flatData.forEach((row) => {
-      const id = String((row as any).id);
-      const parentId = (row as any).parentId;
+      const id = String(row.id);
+      const parentId = row.parentId;
 
       const node = idMap.get(id);
       if (row.parentId) {
@@ -96,7 +96,7 @@ export function flattenTree(
   indent: number;
   nodeKey: string;
 }> {
-  const flat: any[] = [];
+  const flat: Record<string, unknown>[] = [];
 
   nodes.forEach((node) => {
     const currentIndex = rowIndexRef.current++;

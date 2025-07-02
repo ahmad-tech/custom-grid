@@ -218,6 +218,8 @@ const ColumnSidebar: React.FC<ColumnSidebarProps> = ({
                         borderWidth: 1,
                         borderColor: "#9ca3af",
                         cursor: "pointer",
+                        height: "25px",
+                        width: "25px",
                       }}
                       className={undefined}
                     />
@@ -343,6 +345,8 @@ const ColumnSidebar: React.FC<ColumnSidebarProps> = ({
                 borderWidth: 1,
                 borderColor: "#9ca3af",
                 cursor: "pointer",
+                height: "25px",
+                width: "25px",
               }}
               checked={columns.every((col) => col.visible !== false)}
               onCheckedChange={(checked: boolean) =>
@@ -404,6 +408,8 @@ const ColumnSidebar: React.FC<ColumnSidebarProps> = ({
                       borderWidth: 1,
                       borderColor: "#9ca3af",
                       cursor: "pointer",
+                      height: "25px",
+                      width: "25px",
                     }}
                   />
                   <GripHorizontal

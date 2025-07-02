@@ -140,6 +140,45 @@ export interface AddRowConfig {
   ) => void;
 }
 
+/**
+ * Event type for row value changes in the grid.
+ * - `data`: The updated row data.
+ * - `parentId`: The parent row's id if editing a child row, otherwise undefined.
+ */
+export type RowValueChangedEventType = {
+  data: Record<string, unknown>;
+  parentId?: string;
+};
+
+/**
+ * Event type for cell value changes in the grid.
+ * - `data`: The full row data after the cell change.
+ * - `field`: The field/column that was changed.
+ * - `value`: The new value for the cell.
+ * - `parentId`: The parent row's id if editing a child row, otherwise undefined.
+ */
+export type CellValueChangedEventType = {
+  data: Record<string, unknown>;
+  field: string;
+  value: unknown;
+  // parentId?: string;
+};
+export interface IFullRowEditConfig {
+  // for full row editing
+  editType: "fullRow" | "cell";
+
+  /**
+   * Callback fired when a row (parent or child) is edited and saved.
+   *
+   * If editing a child row, `parentId` will be provided to identify the parent row
+   * of the child being edited. This is necessary for hierarchical (tree) data structures,
+   * so the parent can be found and the correct child updated in the parent's `children` array.
+   *
+   * If editing a top-level row, `parentId` will be undefined.
+   */
+  onRowValueChanged: (params: RowValueChangedEventType) => void;
+  onCellValueChanged: (params: CellValueChangedEventType) => void;
+}
 export interface DataGridProps {
   sortModel?: SortModelType; // sorting model, default is 'asc'
   rowModelType?: RowModelType; // type of row model, default is 'clientSide'
@@ -191,14 +230,14 @@ export interface DataGridProps {
   serverPivoting?: IServerSidePivoting;
 
   // for full row editing
-  editType?: "fullRow" | "cell";
-  onRowValueChanged?: (params: { data: Record<string, unknown> }) => void;
-  onCellValueChanged?: (params: {
-    data: Record<string, unknown>;
-    field: string;
-    value: unknown;
-  }) => void;
-  fullRowButtons?: boolean;
+  // editType?: "fullRow" | "cell";
+  // onRowValueChanged?: (params: { data: Record<string, unknown> }) => void;
+  // onCellValueChanged?: (params: {
+  //   data: Record<string, unknown>;
+  //   field: string;
+  //   value: unknown;
+  // }) => void;
+  // fullRowButtons?: boolean;
 
   // for TREE Data
   treeData?: boolean;
@@ -226,6 +265,9 @@ export interface DataGridProps {
   }) => void;
 
   parentRow?: any;
+
+  suppressExcelExport?: boolean;
+  csvFileName?: string;
 }
 
 export type TreeDataChildrenFieldType = "children" | "path" | "parentId";
@@ -233,6 +275,10 @@ export type TreeDataChildrenFieldType = "children" | "path" | "parentId";
 export interface ColumnDefProps {
   // Configuration for adding a new row inline.
   addRowConfig?: AddRowConfig;
+
+  // Configuration for editing full row
+  fullRowEditConfig?: IFullRowEditConfig;
+
   tableLayout?: "fixed" | "auto";
   columns?: ColumnDef[];
   masterDetail?: boolean;

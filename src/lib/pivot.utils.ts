@@ -5,10 +5,18 @@ export interface IPivotColumnDef {
 
 export interface IGroupedPivotedData {
   groupKey: string;
-  children: any[];
+  children: Record<string, unknown>[];
   totalAggregations: Record<string, number>;
   totalMedals: number;
 }
+
+export const getCombinations = <T>(arrays: T[][]): T[][] => {
+  return arrays.reduce(
+    (acc: T[][], values: T[]) =>
+      acc.flatMap((comb) => values.map((val) => [...comb, val])),
+    [[]]
+  );
+};
 
 // Used internally to help compute average: { sum, count }
 export type AvgTrackerType = Record<string, { sum: number; count: number }>;
@@ -35,7 +43,7 @@ export const applyPivotAgg = (
 
 // Main pivot and aggregation function
 export function pivotAndAggregateByGroup(
-  data: any[],
+  data: Record<string, unknown>[],
   groupBy: string,
   pivotColumns: string[],
   columnDefs: IPivotColumnDef[]
@@ -47,7 +55,7 @@ export function pivotAndAggregateByGroup(
 
   // Clean and filter numeric fields
   const cleanedData = data.map((row) => {
-    const newRow: Record<string, any> = {};
+    const newRow: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(row)) {
       const isNumeric = typeof value === "number";
       if (!isNumeric || allowedNumericFields.has(key)) {
@@ -62,8 +70,8 @@ export function pivotAndAggregateByGroup(
   const groupMap = new Map<
     string,
     {
-      groupValue: any;
-      childrenMap: Map<string, any>;
+      groupValue: string;
+      childrenMap: Map<string, Record<string, unknown>>;
       totalAggregations: Record<string, number>;
       avgTracking: AvgTrackerType;
       totalMedalsRaw: number;
@@ -73,18 +81,17 @@ export function pivotAndAggregateByGroup(
   const groupByValues = Array.from(
     new Set(cleanedData.map((row) => row[groupBy]))
   );
-  const pivotValuesMap: Record<string, Set<any>> = {};
-
+  const pivotValuesMap: Record<string, Set<string>> = {};
   pivotColumns.forEach((col) => {
-    pivotValuesMap[col] = new Set(cleanedData.map((row) => row[col]));
+    pivotValuesMap[col] = new Set(cleanedData.map((row) => String(row[col])));
   });
 
-  const allCombinations: Array<{ [key: string]: any }> = [];
+  const allCombinations: Record<string, unknown>[] = [];
 
   // Recursively create all combinations of pivot columns
   function generateCombinations(
     keys: string[],
-    prefix: Record<string, any> = {}
+    prefix: Record<string, unknown> = {}
   ) {
     if (keys.length === 0) {
       allCombinations.push(prefix);
@@ -107,8 +114,8 @@ export function pivotAndAggregateByGroup(
     // Initialize group entry
     if (!groupMap.has(groupKey)) {
       groupMap.set(groupKey, {
-        groupValue,
-        childrenMap: new Map<string, any>(),
+        groupValue: String(groupValue),
+        childrenMap: new Map<string, Record<string, unknown>>(),
         totalAggregations: {},
         avgTracking: {},
         totalMedalsRaw: 0,
@@ -147,7 +154,7 @@ export function pivotAndAggregateByGroup(
 
     // Populate pivoted row (childrenMap)
     if (!groupEntry.childrenMap.has(pivotKey)) {
-      const newRow: any = {
+      const newRow: Record<string, unknown> = {
         [groupBy]: groupValue,
         ...Object.fromEntries(pivotColumns.map((key) => [key, row[key]])),
       };
@@ -183,26 +190,33 @@ export function pivotAndAggregateByGroup(
         const rawValue = Number(row[field]) || 0;
 
         if (aggFunc === "avg") {
-          existingRow[`__${field}_sum`] =
-            (existingRow[`__${field}_sum`] || 0) + rawValue;
-          existingRow[`__${field}_count`] =
-            (existingRow[`__${field}_count`] || 0) + 1;
-          existingRow[field] =
-            existingRow[`__${field}_sum`] / existingRow[`__${field}_count`];
+          if (existingRow) {
+            const sum =
+              ((existingRow[`__${field}_sum`] as number) || 0) + rawValue;
+            const count =
+              ((existingRow[`__${field}_count`] as number) || 0) + 1;
+            existingRow[`__${field}_sum`] = sum;
+            existingRow[`__${field}_count`] = count;
+            existingRow[field] = sum / count;
+          }
           childSum += rawValue;
         } else {
           const isCount = aggFunc === "count";
           const value = isCount ? 1 : rawValue;
-          existingRow[field] = applyPivotAgg(
-            aggFunc,
-            existingRow[field],
-            value
-          );
-          if (!isCount) childSum += existingRow[field];
+          if (existingRow) {
+            existingRow[field] = applyPivotAgg(
+              aggFunc,
+              existingRow[field] as number,
+              value
+            );
+          }
+          if (!isCount) childSum += (existingRow?.[field] as number) || 0;
         }
       });
 
-      existingRow.totalMedals = childSum;
+      if (existingRow) {
+        existingRow.totalMedals = childSum;
+      }
     }
   });
 
@@ -214,7 +228,7 @@ export function pivotAndAggregateByGroup(
     for (const combo of allCombinations) {
       const pivotKey = pivotColumns.map((k) => combo[k]).join("||");
       if (!groupEntry.childrenMap.has(pivotKey)) {
-        const newRow: any = {
+        const newRow = {
           [groupBy]: groupValue,
           ...combo,
         };
