@@ -1,1 +1,0 @@
-{"version":3,"file":"useCookedData.d.ts","sourceRoot":"","sources":["../../../src/components/Grid/useCookedData.tsx"],"names":[],"mappings":"AAAA,OAAO,EAAa,cAAc,EAAE,MAAM,cAAc,CAAC;AAGzD,KAAK,SAAS,GAAG,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC,CAAC;AAGzC,wBAAgB,aAAa,CAAC,UAAU,EAAE,cAAc;0BAqF7C,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC,EAAE,KAAG,SAAS,EAAE;EAOjD"}
