@@ -22,6 +22,8 @@ A powerful and flexible data grid component for React applications with support 
 - **Value getters and setters** - Custom data transformation and editing
 - **Grand total rows** - Display totals at top, bottom, or none
 - **Group by panel** - Interactive grouping interface
+- **Data export** - Excel and CSV export functionality
+- **Enhanced editing events** - Parent-child context in edit callbacks
 
 ## Installation
 
@@ -222,16 +224,6 @@ interface DataGridProps {
   pivotMode?: boolean;
   serverPivoting?: IServerSidePivoting;
   
-  // Editing
-  editType?: 'fullRow' | 'cell';
-  onRowValueChanged?: (params: { data: Record<string, unknown> }) => void;
-  onCellValueChanged?: (params: {
-    data: Record<string, unknown>;
-    field: string;
-    value: unknown;
-  }) => void;
-  fullRowButtons?: boolean;
-  
   // Tree Data
   treeData?: boolean;
   groupDefaultExpanded?: number; // -1 = all expanded, 0 = none, 1 = first, etc.
@@ -245,6 +237,12 @@ interface DataGridProps {
     newData: Record<string, unknown>[];
     draggedRows?: Record<string, unknown>[];
   }) => void;
+  
+  parentRow?: any;
+  
+  // Export options
+  suppressExcelExport?: boolean;
+  csvFileName?: string;
   
   // Events
   onDataChange?: (
@@ -348,12 +346,77 @@ Configure inline row addition with parent support:
 
 ```typescript
 interface AddRowConfig {
+  /**
+   * Callback triggered when a new row is added via the grid UI.
+   * Receives the full row object as the first argument,
+   * and optionally the parent id or parent row as the second argument.
+   */
   onAdd?: (
     newRow: Record<string, unknown>,
     parentId?: string | number | null
   ) => void;
 }
 ```
+
+### Full Row Edit Configuration
+
+Configure full row editing with enhanced event handling:
+
+```typescript
+interface IFullRowEditConfig {
+  editType: "fullRow" | "cell";
+  
+  /**
+   * Callback fired when a row (parent or child) is edited and saved.
+   * If editing a child row, `parentId` will be provided to identify the parent row.
+   */
+  onRowValueChanged: (params: RowValueChangedEventType) => void;
+  onCellValueChanged: (params: CellValueChangedEventType) => void;
+}
+
+/**
+ * Event type for row value changes in the grid.
+ */
+type RowValueChangedEventType = {
+  data: Record<string, unknown>;
+  parentId?: string;
+};
+
+/**
+ * Event type for cell value changes in the grid.
+ */
+type CellValueChangedEventType = {
+  data: Record<string, unknown>;
+  field: string;
+  value: unknown;
+};
+```
+
+### Column Definition Properties
+
+Configure the overall column definitions and grid behavior:
+
+```typescript
+interface ColumnDefProps {
+  // Configuration for adding a new row inline
+  addRowConfig?: AddRowConfig;
+  
+  // Configuration for editing full row
+  fullRowEditConfig?: IFullRowEditConfig;
+  
+  tableLayout?: "fixed" | "auto";
+  columns?: ColumnDef[];
+  masterDetail?: boolean;
+  detailGridOptions?: ColumnDefProps;
+  getDetailRowData?: (params: {
+    data: Record<string, unknown>;
+    successCallback: (data: Record<string, unknown>[]) => void;
+  }) => void;
+  aggFuncs?: {
+    [key: string]: (params: { values: unknown[] }) => unknown;
+  };
+  grandTotalRow?: "top" | "bottom" | "none";
+}
 
 ### Group Objects
 
@@ -420,20 +483,40 @@ Enable pivot mode to transform your data into pivot tables:
 
 ### Editing
 
-Configure editing behavior with full row editing support:
+Configure editing behavior with enhanced full row editing support:
 
 ```tsx
+const columnDefs = {
+  columns: [
+    {
+      field: 'name',
+      headerName: 'Name',
+      type: 'text',
+      editable: true
+    },
+    {
+      field: 'age',
+      headerName: 'Age',
+      type: 'number',
+      editable: true
+    }
+  ],
+  fullRowEditConfig: {
+    editType: 'fullRow', // or 'cell'
+    onRowValueChanged: ({ data, parentId }) => {
+      // Handle full row changes with parent context
+      console.log('Row changed:', data, 'Parent ID:', parentId);
+    },
+    onCellValueChanged: ({ data, field, value }) => {
+      // Handle individual cell changes
+      console.log('Cell changed:', field, value, data);
+    }
+  }
+};
+
 <DataGrid
   data={myData}
   columnDefs={columnDefs}
-  editType="cell" // or "fullRow"
-  onCellValueChanged={({ data, field, value }) => {
-    // Handle cell value changes
-  }}
-  onRowValueChanged={({ data }) => {
-    // Handle full row changes
-  }}
-  fullRowButtons={true}
 />
 ```
 
@@ -497,6 +580,19 @@ const columnDefs = {
     }
   ]
 };
+```
+
+### Export Options
+
+Configure data export functionality:
+
+```tsx
+<DataGrid
+  data={myData}
+  columnDefs={columnDefs}
+  suppressExcelExport={false} // Enable/disable Excel export
+  csvFileName="my-grid-data" // Custom filename for CSV export
+/>
 ```
 
 ## Contributing
