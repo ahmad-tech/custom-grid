@@ -5,7 +5,7 @@ import type {
   GroupObject,
   ColumnDefProps,
 } from "@/types/grid";
-import "./styles/tailwind.css";
+import "../src/styles/tailwind.css";
 
 export type { DataGridProps, ColumnDef, GroupObject, ColumnDefProps };
 export default DataGrid;
