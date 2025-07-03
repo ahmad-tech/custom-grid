@@ -61,3 +61,79 @@
   animation: pop 0.3s ease-in-out forwards;
   opacity: 0; /* so it's hidden until animation starts */
 }
+
+/* Custom component classes (empty, for extension/documentation) */
+
+.bg-popover {
+  background-color: hsl(var(--popover));
+}
+.text-popover-foreground {
+  color: hsl(var(--popover-foreground));
+}
+.bg-background {
+  background-color: hsl(var(--background));
+}
+.text-foreground {
+  color: hsl(var(--foreground));
+}
+.bg-primary {
+  background-color: hsl(var(--primary));
+}
+.text-primary-foreground {
+  color: hsl(var(--primary-foreground));
+}
+.bg-secondary {
+  background-color: hsl(var(--secondary));
+}
+.text-secondary-foreground {
+  color: hsl(var(--secondary-foreground));
+}
+.bg-muted {
+  background-color: hsl(var(--muted));
+}
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+.bg-accent {
+  background-color: hsl(var(--accent));
+}
+.text-accent-foreground {
+  color: hsl(var(--accent-foreground));
+}
+.bg-destructive {
+  background-color: hsl(var(--destructive));
+}
+.text-destructive-foreground {
+  color: hsl(var(--destructive-foreground));
+}
+.bg-card {
+  background-color: hsl(var(--card));
+}
+.text-card-foreground {
+  color: hsl(var(--card-foreground));
+}
+.border-input {
+  border-color: hsl(var(--input));
+}
+.bg-ring {
+  background-color: hsl(var(--ring));
+}
+.border-ring {
+  border-color: hsl(var(--ring));
+}
+.bg-border {
+  background-color: hsl(var(--border));
+}
+.bg-input {
+  background-color: hsl(var(--input));
+}
+.border {
+  border-width: 1px;
+  border-style: solid;
+}
+.shadow-xs {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.outline-hidden {
+  outline: none;
+}

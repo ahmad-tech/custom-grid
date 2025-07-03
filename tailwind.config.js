@@ -10,27 +10,7 @@ export default {
   corePlugins: {
     preflight: false, // Disable Tailwind's base styles to avoid conflicts
   },
-  safelist: [
-    // shadcn/ui and custom classes
-    "bg-popover",
-    "text-popover-foreground",
-    "border-popover",
-    "shadow-popover",
-    "bg-background",
-    "text-foreground",
-    "border-border",
-    "bg-muted",
-    "text-muted-foreground",
-    "bg-primary",
-    "text-primary",
-    "bg-accent",
-    "text-accent",
-    "bg-destructive",
-    "text-destructive",
-    "border-gray-200",
-    "bg-blue-50",
-    // Add more as needed
-  ],
+  safelist: [],
   theme: {
     extend: {
       colors: {
@@ -38,8 +18,7 @@ export default {
         "gray-50": "#f9fafb",
         "gray-200": "#e5e7eb",
         "blue-50": "#eff6ff",
-
-        // shadcn/ui CSS variables
+        // shadcn/ui CSS variables - these create the utility classes
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
