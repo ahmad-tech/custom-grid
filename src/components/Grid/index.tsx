@@ -73,7 +73,11 @@ import {
   getParentNodeKey,
   moveTreeNode,
 } from "@/lib/tree-data.util";
-import { exportDataToCSV } from "@/lib/csv.util";
+import {
+  exportDataToCSV,
+  flattenMasterDetailData,
+  flattenPivotedDataForCSV,
+} from "@/lib/csv.util";
 
 export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
   (
@@ -111,7 +115,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       showChildCount,
       parentRow,
       suppressExcelExport = false, //for data export
-      csvFileName,
+      fileName,
     }: DataGridProps,
     ref: React.Ref<HTMLDivElement>
   ) => {
@@ -2101,7 +2105,10 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             }}
           >
             {rowSelection && (
-              <TableCell key={`checkbox-cell-${rowIndex}`} className="w-[50px]">
+              <TableCell
+                key={`checkbox-cell-${rowIndex}`}
+                style={{ width: "50px" }}
+              >
                 <div className="w-[30px] flex justify-center items-center">
                   <Checkbox
                     // checked={
@@ -2492,54 +2499,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               );
             })}
 
-            {addRowConfig &&
-              masterDetail &&
-              Array.isArray(row?.children) &&
-              row.children.length < 1 && (
-                <TableCell
-                  className="w-[50px] p-0"
-                  style={{
-                    verticalAlign: "middle",
-                    textAlign: "center",
-                  }}
-                >
-                  <button
-                    className="cursor-pointer text-green-600 text-lg transition rounded-md flex items-center justify-center w-full h-full"
-                    title="Add child"
-                    style={{
-                      minHeight: "40px",
-                    }}
-                    onClick={() => {
-                      const detailCols =
-                        columnDefs.detailGridOptions?.columns || [];
-                      const emptyChild: Record<string, unknown> = {};
-                      detailCols.forEach((col: ColumnDef) => {
-                        emptyChild[col.field] = "";
-                      });
-                      if (typeof onDataChange === "function") {
-                        const updatedRow = {
-                          ...row,
-                          children: [
-                            ...(Array.isArray(row.children)
-                              ? row.children
-                              : []),
-                            emptyChild,
-                          ],
-                        };
-                        onDataChange(updatedRow, row, "children");
-                      }
-                      if (typeof rowIndex !== "undefined") {
-                        setExpandedRows((prev) => ({
-                          ...prev,
-                          [rowIndex]: true,
-                        }));
-                      }
-                    }}
-                  >
-                    <Plus strokeWidth={1.5} />
-                  </button>
-                </TableCell>
-              )}
+            {addRowConfig && (
+              <TableCell
+                style={{
+                  verticalAlign: "middle",
+                  textAlign: "center",
+                  width: "50px",
+                }}
+              ></TableCell>
+            )}
           </TableRow>
         );
       }
@@ -2575,7 +2543,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               }}
             >
               <div
-                className="detail-grid-container"
                 style={{
                   padding: "20px",
                   overflow: "auto",
@@ -2700,6 +2667,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                   )}
                 </TableCell>
               ))}
+              {addRowConfig && (
+                <TableCell
+                  style={{
+                    width: "50px",
+                    verticalAlign: "middle",
+                    textAlign: "center",
+                  }}
+                ></TableCell>
+              )}
             </TableRow>
           </TableBody>
         </Table>
@@ -2886,14 +2862,51 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
     // Inside the DataGrid component, before the return statement:
     const handleExportCSV = () => {
-      // Use filteredData and displayColumns for export
+      // Pivot export
+      if (enablePivot && groupedPivotedData && groupedPivotedData.length > 0) {
+        // You may need to adjust these based on your pivot config
+        const groupField = groupedColumns[0]; // e.g., "country"
+        const pivotFields = pivotColumns; // e.g., ["year", "game"]
+        const metrics = columns
+          .filter((col) => col.aggFunc)
+          .map((col) => col.field); // e.g., ["gold", "silver"]
+
+        const { columns: csvColumns, rows: csvRows } = flattenPivotedDataForCSV(
+          groupedPivotedData,
+          groupField,
+          pivotFields,
+          metrics
+        );
+
+        exportDataToCSV(csvRows, csvColumns, fileName);
+        return;
+      }
+
+      // Master-detail export
+
+      let columnsForExport = displayColumns;
+
+      // If masterDetail, include child columns as well
+      if (masterDetail && columnDefs.detailGridOptions?.columns) {
+        // Get unique fields from both parent and child columns
+        const childColumns = columnDefs.detailGridOptions.columns.filter(
+          (childCol) =>
+            !displayColumns.some((col) => col.field === childCol.field)
+        );
+        columnsForExport = [...displayColumns, ...childColumns];
+      }
+
+      const dataToExport = masterDetail
+        ? flattenMasterDetailData(filteredData, "children")
+        : filteredData;
+
       exportDataToCSV(
-        filteredData,
-        displayColumns.map((col) => ({
+        dataToExport,
+        columnsForExport.map((col) => ({
           field: col.field,
           headerName: col.headerName || col.field,
         })),
-        csvFileName
+        fileName
       );
     };
 
@@ -3132,7 +3145,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               <TableHeader className="sticky top-0 z-30 bg-gray-200 shadow-sm">
                 <TableRow className="divide-x divide-gray-300">
                   {rowSelection && (
-                    <TableHead className="w-[50px]">
+                    <TableHead style={{ width: "50px" }}>
                       <div className="w-[30px] flex justify-center items-center">
                         {rowSelection.mode === "multiple" && (
                           <Checkbox
@@ -3346,14 +3359,14 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 {newRowData && isAddingRow && (
                   <TableRow className="bg-yellow-50">
                     {rowSelection && (
-                      <TableCell className="w-[50px]">
+                      <TableCell style={{ width: "50px" }}>
                         <div className="w-[30px] flex justify-center items-center"></div>
                       </TableCell>
                     )}
                     {displayColumns.map((col) => (
                       <TableCell
                         key={`new-${col.field}`}
-                        className="border-2 py-1"
+                        className="border-1 border-gray-200 py-1"
                       >
                         <CellEditor
                           columnDef={{
