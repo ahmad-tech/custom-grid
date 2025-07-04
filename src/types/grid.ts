@@ -53,7 +53,6 @@ export interface ColumnDef {
   tooltipField?: string;
   cellRenderer?: unknown;
   aggSourceField?: string | unknown;
-  aggSourceFields?: [string, string] | any;
   pivot?: boolean; // whether the column is used for pivoting
 }
 export interface IRowSelection {
@@ -267,7 +266,7 @@ export interface DataGridProps {
   parentRow?: any;
 
   suppressExcelExport?: boolean;
-  csvFileName?: string;
+  fileName?: string;
 }
 
 export type TreeDataChildrenFieldType = "children" | "path" | "parentId";

@@ -2506,7 +2506,55 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                   textAlign: "center",
                   width: "50px",
                 }}
-              ></TableCell>
+              >
+                {masterDetail &&
+                  Array.isArray(row?.children) &&
+                  row.children.length < 1 && (
+                    <TableCell
+                      className="w-[50px] p-0"
+                      style={{
+                        verticalAlign: "middle",
+                        textAlign: "center",
+                      }}
+                    >
+                      <button
+                        className="cursor-pointer text-lg transition rounded-md flex items-center justify-center w-full h-full"
+                        title="Add child"
+                        style={{
+                          color: "#a0a2a4",
+                        }}
+                        onClick={() => {
+                          const detailCols =
+                            columnDefs.detailGridOptions?.columns || [];
+                          const emptyChild: Record<string, unknown> = {};
+                          detailCols.forEach((col: ColumnDef) => {
+                            emptyChild[col.field] = "";
+                          });
+                          if (typeof onDataChange === "function") {
+                            const updatedRow = {
+                              ...row,
+                              children: [
+                                ...(Array.isArray(row.children)
+                                  ? row.children
+                                  : []),
+                                emptyChild,
+                              ],
+                            };
+                            onDataChange(updatedRow, row, "children");
+                          }
+                          if (typeof rowIndex !== "undefined") {
+                            setExpandedRows((prev) => ({
+                              ...prev,
+                              [rowIndex]: true,
+                            }));
+                          }
+                        }}
+                      >
+                        <Plus strokeWidth={1.5} />
+                      </button>
+                    </TableCell>
+                  )}
+              </TableCell>
             )}
           </TableRow>
         );
