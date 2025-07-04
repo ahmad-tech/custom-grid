@@ -159,8 +159,6 @@ const ColumnSidebar: React.FC<ColumnSidebarProps> = ({
                 col.headerName.toLowerCase().includes(search.toLowerCase())
               )
               ?.map((col) => {
-                const isDraggable = col.type?.toLowerCase() === "number";
-
                 return (
                   <div
                     key={col.field}
@@ -169,9 +167,8 @@ const ColumnSidebar: React.FC<ColumnSidebarProps> = ({
                       alignItems: "center",
                       gap: "0.5rem",
                     }}
-                    draggable={isDraggable}
+                    draggable={true}
                     onDragStart={(e) => {
-                      // e.dataTransfer.setData("text/plain", col.field);
                       e.dataTransfer.setData("text/plain", col.field); // optional for browser preview
                       e.dataTransfer.setData("columnField", col.field); // used in your custom drop logic
                     }}
