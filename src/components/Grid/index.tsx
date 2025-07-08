@@ -116,6 +116,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       parentRow,
       suppressExcelExport = false, //for data export
       fileName,
+
+      containerHeight,
     }: DataGridProps,
     ref: React.Ref<HTMLDivElement>
   ) => {
@@ -3006,7 +3008,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           <div
             style={{
               overflow: "auto",
-              height: "100%",
+              height: containerHeight ? `${containerHeight}px` : "100%",
+              maxHeight: `80vh`,
             }}
             ref={scrollParentRef}
           >

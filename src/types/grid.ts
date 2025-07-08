@@ -228,16 +228,6 @@ export interface DataGridProps {
 
   serverPivoting?: IServerSidePivoting;
 
-  // for full row editing
-  // editType?: "fullRow" | "cell";
-  // onRowValueChanged?: (params: { data: Record<string, unknown> }) => void;
-  // onCellValueChanged?: (params: {
-  //   data: Record<string, unknown>;
-  //   field: string;
-  //   value: unknown;
-  // }) => void;
-  // fullRowButtons?: boolean;
-
   // for TREE Data
   treeData?: boolean;
   groupDefaultExpanded?: number; // -1 = all expanded, 0 = none, 1 = first, etc.
@@ -267,6 +257,9 @@ export interface DataGridProps {
 
   suppressExcelExport?: boolean;
   fileName?: string;
+
+  // For container height in pixce;
+  containerHeight?: number;
 }
 
 export type TreeDataChildrenFieldType = "children" | "path" | "parentId";
