@@ -78,6 +78,7 @@ import {
   flattenMasterDetailData,
   flattenPivotedDataForCSV,
 } from "@/lib/csv.util";
+import moment from "moment";
 
 export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
   (
@@ -153,7 +154,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
 
       columns?.forEach((col) => {
         if (!(col.field in initial)) {
-          initial[col.field] = ""; // or default for col.type
+          if (col.editorType === "time") {
+            initial[col.field] = moment().format("LT");
+          } else if (col.editorType === "date") {
+            initial[col.field] = new Date().toLocaleDateString();
+          } else if (col.editorType === "dateTime") {
+            initial[col.field] = new Date().toLocaleString();
+          } else {
+            initial[col.field] = "";
+          }
         }
       });
 
@@ -265,8 +274,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         fromMap.length > 0
           ? fromMap
           : _aggCols.length === 0 && aggCols && aggCols.length > 0
-            ? aggCols
-            : null;
+          ? aggCols
+          : null;
 
       if (newAggCols) {
         (setServerAggColsFn ?? _setAggCols)(newAggCols);
@@ -280,12 +289,12 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         const grouped: IGroupedPivotedData[] =
           serverPivoting && serverPivotedData
             ? (serverPivotedData as unknown as IGroupedPivotedData[])
-            : (pivotAndAggregateByGroup(
+            : pivotAndAggregateByGroup(
                 data,
                 groupByField,
                 pivotColumns,
                 serverAggCols ? serverAggCols : _aggCols
-              ) ?? []);
+              ) ?? [];
 
         if (sortDirection && grouped.length > 0) {
           return [...grouped].sort((a, b) =>
@@ -554,15 +563,20 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [undo, redo]);
 
-    useImperativeHandle<HTMLDivElement, HTMLDivElement>(ref, () => {
-      const div = document.createElement("div");
-      Object.assign(div, {
-        resetSelection: () => {
-          setSelectedRows({});
-        },
-      });
-      return div;
-    }, []);
+    useImperativeHandle<HTMLDivElement, HTMLDivElement>(
+      ref,
+      () => {
+        const div = document.createElement("div");
+        Object.assign(div, {
+          resetSelection: () => {
+            setSelectedRows({});
+          },
+        });
+        return div;
+      },
+
+      []
+    );
 
     // Initial Setup
     useEffect(() => {
@@ -612,7 +626,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 visible: true,
                 rowGroup: false,
                 aggFunc: typeof firstItem[key] === "number" ? "sum" : undefined,
-              }) as ColumnDef
+              } as ColumnDef)
           );
 
         setColumns(extracted);
@@ -1140,15 +1154,19 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           if (!editingCell) return;
           const { field } = editingCell;
           const newRow = { ...gridData[editingCell.rowIndex], [field]: value };
+
           const idxInAll = gridData.findIndex(
             (r) => r === gridData[editingCell.rowIndex]
           );
-
+          console.log(idxInAll, "DATA");
           if (idxInAll !== -1) {
             const previousRecord = gridData[editingCell.rowIndex];
-            const newData = [...gridData];
+            const newData = [
+              ...gridData.slice(0, idxInAll),
+              newRow,
+              ...gridData.slice(idxInAll + 1),
+            ];
             const cookedData = getCookedData(newData);
-            newData[idxInAll] = newRow;
 
             //For notify parent with new record, previous record and field
             if (onDataChange) {
@@ -1703,7 +1721,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       );
       return [...grouped, ...nonGrouped];
     }, [columns, groupedColumns, enablePivot, pivotColumns, enablePivot]);
-
     // Add a helper function to get cell value
     const getCellValue = (
       row: Record<string, unknown>,
@@ -2141,9 +2158,6 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                     onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
                       e.stopPropagation()
                     }
-                    // onClick={(e: { stopPropagation: () => void }) => {
-                    //   e.stopPropagation();
-                    // }}
                     className={"border-1 border-gray-400 cursor-pointer"}
                   />
                 </div>
@@ -2480,12 +2494,12 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                                   tooltipValue !== ""
                                     ? tooltipValue
                                     : col.rowGroup
-                                      ? ""
-                                      : formatCellValue(
-                                          cellValue,
-                                          row || {},
-                                          col
-                                        );
+                                    ? ""
+                                    : formatCellValue(
+                                        cellValue,
+                                        row || {},
+                                        col
+                                      );
 
                                 return result != null ? String(result) : ""; // Ensure it's a valid string or ReactNode
                               })()}
@@ -2616,6 +2630,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                       data={detailData[parentIndex]}
                       isChild={true}
                       parentRow={item.parentRow}
+                      rowSelection={rowSelection}
                     />
                   </div>
                 ) : (
@@ -3105,8 +3120,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                                         {sortDirection === "asc"
                                           ? "↑"
                                           : sortDirection === "desc"
-                                            ? "↓"
-                                            : ""}
+                                          ? "↓"
+                                          : ""}
                                       </th>
                                     )}
                                   {headerCells}
@@ -3404,10 +3419,10 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                   )}
                 </TableRow>
               </TableHeader>
+              {newRowData && isAddingRow && (
+                <TableBody style={{ height: "50px" }}>
+                  {/* Adding new row in the table end here */}
 
-              <TableBody>
-                {/* Adding new row in the table end here */}
-                {newRowData && isAddingRow && (
                   <TableRow className="bg-yellow-50">
                     {rowSelection && (
                       <TableCell style={{ width: "50px" }}>
@@ -3417,34 +3432,36 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                     {displayColumns.map((col) => (
                       <TableCell
                         key={`new-${col.field}`}
-                        className="border-1 border-gray-200 py-1"
+                        className={"border-1 border-gray-200 py-1"}
                       >
-                        <CellEditor
-                          columnDef={{
-                            editorType: (col.editorType ||
-                              "text") as EditorType, // Default to "text"
+                        {!col.disableAdd && (
+                          <CellEditor
+                            columnDef={{
+                              editorType: (col.editorType ||
+                                "text") as EditorType, // Default to "text"
+                              editorParams: col.editorParams,
+                            }}
+                            value={
+                              newRowData[col.field] as
+                                | string
+                                | number
+                                | boolean
+                                | Date
+                                | null
+                            }
+                            onChange={(val) =>
+                              setNewRowData((prev) => ({
+                                ...prev,
+                                [col.field]: val,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const requiredColumns = displayColumns.filter(
+                                  (c) => !!c.editorType && c.isRequired
+                                );
 
-                            editorParams: col.editorParams,
-                          }}
-                          value={
-                            newRowData[col.field] as
-                              | string
-                              | number
-                              | boolean
-                              | Date
-                              | null
-                          }
-                          onChange={(val) =>
-                            setNewRowData((prev) => ({
-                              ...prev,
-                              [col.field]: val,
-                            }))
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              const isValid = displayColumns
-                                .filter((c) => !!c.editorType)
-                                .every((col) => {
+                                const isValid = requiredColumns.every((col) => {
                                   const value = newRowData[col.field];
                                   return (
                                     value !== null &&
@@ -3453,28 +3470,28 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                                   );
                                 });
 
-                              if (isValid) {
-                                addRowConfig?.onAdd?.(newRowData, parentRow);
+                                if (isValid) {
+                                  addRowConfig?.onAdd?.(newRowData, parentRow);
+                                  setNewRowData({});
+                                  setIsAddingRow(false);
+                                } else {
+                                  // Optional: show error UI
+                                  alert(
+                                    "Please fill all required fields before saving."
+                                  );
+                                  console.warn(
+                                    "Please fill all required fields before saving."
+                                  );
+                                }
+                              }
+
+                              if (e.key === "Escape") {
                                 setNewRowData({});
                                 setIsAddingRow(false);
-                              } else {
-                                // Optional: show error UI
-
-                                alert(
-                                  "Please fill all required fields before saving."
-                                );
-                                console.warn(
-                                  "Please fill all required fields before saving."
-                                );
                               }
-                            }
-
-                            if (e.key === "Escape") {
-                              setNewRowData({});
-                              setIsAddingRow(false);
-                            }
-                          }}
-                        />
+                            }}
+                          />
+                        )}
                       </TableCell>
                     ))}
                     {addRowConfig && (
@@ -3494,8 +3511,9 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                       </TableCell>
                     )}
                   </TableRow>
-                )}
-              </TableBody>
+                </TableBody>
+              )}
+
               {(!enablePivot ||
                 (!serverPivoting && pivotColumns.length < 1) ||
                 (serverPivoting && !serverPivotCols?.length)) && (

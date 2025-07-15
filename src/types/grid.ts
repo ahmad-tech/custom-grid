@@ -54,6 +54,7 @@ export interface ColumnDef {
   cellRenderer?: unknown;
   aggSourceField?: string | unknown;
   pivot?: boolean; // whether the column is used for pivoting
+  disableAdd?: boolean; // whether the column is used for adding a new row
 }
 export interface IRowSelection {
   mode: "single" | "multiple";

@@ -228,7 +228,6 @@ const DateEditor = ({ value, onChange, hideTime = true }: DateEditorProps) => {
 };
 
 const TimeEditor = ({ value, onChange }: TimeEditorProps) => {
-  const timeNow = new Date(value as string);
   // Helper to convert "HH:mm" string to Date object (today's date)
   // const parseTimeStringToDate = (timeStr: string | null): Date => {
   //   if (!timeStr) return new Date();
@@ -254,14 +253,34 @@ const TimeEditor = ({ value, onChange }: TimeEditorProps) => {
   // );
 
   const handleTimeChange = () => {};
+  // If value is a valid date string, use it; otherwise, use current time
+  // Helper: parse "HH:mm" or "HH:mm:ss" to Date object (today's date)
+  const parseTimeStringToDate = (timeStr: string | null): Date => {
+    if (!timeStr) return new Date();
+    const [hours, minutes, seconds] = timeStr.split(":").map(Number);
+    const date = new Date();
+    if (!isNaN(hours) && !isNaN(minutes)) {
+      date.setHours(hours, minutes, isNaN(seconds) ? 0 : seconds, 0);
+      return date;
+    }
+    return new Date();
+  };
 
+  let timeNow: Date;
+  if (typeof value === "string" && value.match(/^\d{2}:\d{2}(:\d{2})?$/)) {
+    timeNow = parseTimeStringToDate(value);
+  } else if (value && !isNaN(new Date(value as string).getTime())) {
+    timeNow = new Date(value as string);
+  } else {
+    timeNow = new Date();
+  }
   return (
     <SimpleTimePicker
       use12HourFormat={true}
       value={timeNow}
       onChange={handleTimeChange}
       onSubmit={(value) => {
-        onChange(moment(value).format());
+        onChange(moment(value).format("HH:mm")); // Only time
       }}
     />
   );

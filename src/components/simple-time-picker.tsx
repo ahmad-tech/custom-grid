@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import { Clock, ChevronDownIcon, CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import React from "react";
 import {
   format,
   parse,
@@ -295,7 +294,7 @@ export function SimpleTimePicker({
   );
 
   const display = useMemo(() => {
-    return format(value, use12HourFormat ? "hh:mm:ss a" : "HH:mm:ss");
+    return format(value, use12HourFormat ? "hh:mm a" : "HH:mm");
   }, [value, use12HourFormat]);
 
   return (
@@ -354,7 +353,7 @@ export function SimpleTimePicker({
                 ))}
               </div>
             </ScrollArea>
-            <ScrollArea className="h-full flex-grow">
+            {/* <ScrollArea className="h-full flex-grow">
               <div className="flex grow flex-col items-stretch overflow-y-auto pe-2 pb-48">
                 {seconds.map((v) => (
                   <div
@@ -371,7 +370,7 @@ export function SimpleTimePicker({
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </ScrollArea> */}
             {use12HourFormat && (
               <ScrollArea className="h-full flex-grow">
                 <div className="flex grow flex-col items-stretch overflow-y-auto pe-2">
@@ -404,6 +403,7 @@ export function SimpleTimePicker({
                     ampm,
                   })
                 );
+                setOpen(false);
               }}
             >
               Done

@@ -17,7 +17,7 @@ export const PivotPanel: React.FC<PivotPanelProps> = ({
 }) => {
   return (
     <div
-      className="flex items-center gap- border p-1 py-2"
+      className="flex items-center gap- border p-1 bg-gray-50 py-2"
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
