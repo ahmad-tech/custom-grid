@@ -55,6 +55,7 @@ export interface ColumnDef {
   aggSourceField?: string | unknown;
   pivot?: boolean; // whether the column is used for pivoting
   disableAdd?: boolean; // whether the column is used for adding a new row
+  isRequired?: boolean; // whether the column is required for adding new rows
 }
 export interface IRowSelection {
   mode: "single" | "multiple";
@@ -179,11 +180,11 @@ export interface IFullRowEditConfig {
   onRowValueChanged: (params: RowValueChangedEventType) => void;
   onCellValueChanged: (params: CellValueChangedEventType) => void;
 }
+
 export interface DataGridProps {
   sortModel?: SortModelType; // sorting model, default is 'asc'
   rowModelType?: RowModelType; // type of row model, default is 'clientSide'
 
-  isChild?: boolean;
   data?: Record<string, unknown>[];
   pivotedData?: Record<string, unknown>[];
 

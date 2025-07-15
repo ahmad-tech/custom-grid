@@ -24,6 +24,7 @@ A powerful and flexible data grid component for React applications with support 
 - **Group by panel** - Interactive grouping interface
 - **Data export** - Excel and CSV export functionality
 - **Enhanced editing events** - Parent-child context in edit callbacks
+- **Container height control** - Set custom container heights
 
 ## Installation
 
@@ -83,10 +84,6 @@ const MyGrid = () => {
       data={myData}
       columnDefs={columnDefs}
       rowModelType="clientSide"
-      editType="cell"
-      onCellValueChanged={({ data, field, value }) => {
-        console.log('Cell changed:', field, value, data);
-      }}
       pagination={{
         paginationInfo: {
           page: 1,
@@ -185,8 +182,9 @@ interface ColumnDef {
   tooltipField?: string;      // Field to use for cell tooltip
   cellRenderer?: unknown;     // Custom cell renderer
   aggSourceField?: string | unknown;  // Source field for aggregation
-  aggSourceFields?: [string, string] | any;  // Multiple source fields
   pivot?: boolean;            // Whether the column is used for pivoting
+  disableAdd?: boolean;       // Whether the column is used for adding a new row
+  isRequired?: boolean;       // Whether the column is required for adding new rows
 }
 ```
 
@@ -201,7 +199,6 @@ interface DataGridProps {
   pivotedData?: Record<string, unknown>[];
   columnDefs: ColumnDefProps;
   rowModelType?: 'clientSide' | 'serverSide';
-  isChild?: boolean;
   
   // Sorting
   sortModel?: SortModelType;
@@ -240,7 +237,7 @@ interface DataGridProps {
   treeData?: boolean;
   groupDefaultExpanded?: number; // -1 = all expanded, 0 = none, 1 = first, etc.
   getDataPath?: (data: Record<string, unknown>) => string[];
-  treeDataChildrenField?: 'children' | 'path' | 'parentId';
+  treeDataChildrenField?: TreeDataChildrenFieldType;
   rowDragManaged?: boolean;
   showChildCount?: boolean;
   onRowDragEnd?: (params: {
@@ -254,7 +251,10 @@ interface DataGridProps {
   
   // Export options
   suppressExcelExport?: boolean;
-  csvFileName?: string;
+  fileName?: string;
+  
+  // Container height
+  containerHeight?: number;
   
   // Events
   onDataChange?: (
@@ -310,11 +310,13 @@ Filters can be configured with:
 
 ```typescript
 interface IFilterModel {
-  [field: string]: {
-    filterType: string;  // 'text', 'number', etc.
-    type: string;       // 'contains', 'equals', etc.
-    filter: string | number | boolean | Date;
-  };
+  [field: string]: IFilterModelItem;
+}
+
+interface IFilterModelItem {
+  filterType: string;  // 'text', 'number', etc.
+  type: string;       // 'contains', 'equals', etc.
+  filter: string | number | boolean | Date;
 }
 ```
 
@@ -327,6 +329,8 @@ interface ISortModelItem {
   colName: string;
   sort: 'asc' | 'desc';
 }
+
+type SortModelType = ISortModelItem[];
 ```
 
 ### Server-Side Pivoting
@@ -350,6 +354,12 @@ interface IAggCol {
   field: string;
   aggFunc: string;
 }
+
+type PivotColumnValuesType = {
+  [field: string]: Array<string | number>;
+};
+
+type IPivotDataColumns = PivotColumnValuesType[];
 ```
 
 ### Add Row Configuration
@@ -429,6 +439,7 @@ interface ColumnDefProps {
   };
   grandTotalRow?: "top" | "bottom" | "none";
 }
+```
 
 ### Group Objects
 
@@ -446,6 +457,12 @@ interface GroupObject {
   aggregations: Record<string, unknown>;
   [key: string]: unknown;
 }
+```
+
+### Tree Data Types
+
+```typescript
+type TreeDataChildrenFieldType = "children" | "path" | "parentId";
 ```
 
 ## Advanced Features
@@ -621,7 +638,22 @@ import 'grid-tool-internal/dist/grid-tool.css';
   data={myData}
   columnDefs={columnDefs}
   suppressExcelExport={false} // Enable/disable Excel export
-  csvFileName="my-grid-data" // Custom filename for CSV export
+  fileName="my-grid-data" // Custom filename for export
+/>
+```
+
+### Container Height Control
+
+Set custom container heights:
+
+```tsx
+import { DataGrid } from 'grid-tool-internal';
+import 'grid-tool-internal/dist/grid-tool.css';
+
+<DataGrid
+  data={myData}
+  columnDefs={columnDefs}
+  containerHeight={600} // Set container height in pixels
 />
 ```
 

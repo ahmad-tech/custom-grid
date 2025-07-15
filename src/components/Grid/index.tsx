@@ -79,8 +79,17 @@ import {
   flattenPivotedDataForCSV,
 } from "@/lib/csv.util";
 import moment from "moment";
+import { useRowSelectionStore } from "@/store/rowSelectionStore";
 
-export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
+interface InernalProps {
+  isChild?: boolean;
+  parentIdentity?: string;
+}
+
+export const DataGrid = forwardRef<
+  HTMLDivElement,
+  DataGridProps & InernalProps
+>(
   (
     {
       data = [],
@@ -91,6 +100,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       onRowClick,
       showGroupByPanel = false,
       isChild = false,
+      parentIdentity,
       rowSelection,
 
       // props for pagination
@@ -119,9 +129,22 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       fileName,
 
       containerHeight,
-    }: DataGridProps,
+    }: DataGridProps & InernalProps,
     ref: React.Ref<HTMLDivElement>
   ) => {
+    const {
+      toggleSelection,
+      isSelected,
+      isAllSelected,
+      clearSelection,
+      setMode,
+    } = useRowSelectionStore();
+
+    //Select Selection Mode
+    useEffect(() => {
+      setMode(rowSelection?.mode || "single");
+    }, []);
+
     const { addRowConfig, fullRowEditConfig } = columnDefs;
 
     const { editType, onCellValueChanged, onRowValueChanged } =
@@ -274,8 +297,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         fromMap.length > 0
           ? fromMap
           : _aggCols.length === 0 && aggCols && aggCols.length > 0
-          ? aggCols
-          : null;
+            ? aggCols
+            : null;
 
       if (newAggCols) {
         (setServerAggColsFn ?? _setAggCols)(newAggCols);
@@ -289,12 +312,12 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         const grouped: IGroupedPivotedData[] =
           serverPivoting && serverPivotedData
             ? (serverPivotedData as unknown as IGroupedPivotedData[])
-            : pivotAndAggregateByGroup(
+            : (pivotAndAggregateByGroup(
                 data,
                 groupByField,
                 pivotColumns,
                 serverAggCols ? serverAggCols : _aggCols
-              ) ?? [];
+              ) ?? []);
 
         if (sortDirection && grouped.length > 0) {
           return [...grouped].sort((a, b) =>
@@ -424,6 +447,38 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         return updated;
       });
     };
+
+    function isParentChildSelected(key: string): boolean {
+      return isSelected(key);
+    }
+
+    function toggleParentChildSelection(
+      key: string,
+      selected: boolean,
+      children?: any[]
+    ) {
+      toggleSelection(key, selected);
+      if (children && children?.length > 0 && rowSelection?.mode === "multiple")
+        selectDescendants(key, children as any, selected);
+    }
+
+    function selectDescendants(
+      path: string,
+      nodes: Array<{ id: string; children?: any[] }>,
+      selection: boolean
+    ) {
+      nodes.forEach((_node, idx) => {
+        // build a unique key for this row (you can choose your own separator)
+        const keyForChild = `${path}_${idx}`;
+        // call your existing toggle
+        toggleSelection(keyForChild, selection);
+
+        // if this node has its own children, recurse
+        if (_node.children && _node.children.length) {
+          selectDescendants(keyForChild, _node.children, selection);
+        }
+      });
+    }
 
     const handlePivotDrop = useCallback(
       (e: React.DragEvent) => {
@@ -563,20 +618,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [undo, redo]);
 
-    useImperativeHandle<HTMLDivElement, HTMLDivElement>(
-      ref,
-      () => {
-        const div = document.createElement("div");
-        Object.assign(div, {
-          resetSelection: () => {
-            setSelectedRows({});
-          },
-        });
-        return div;
-      },
-
-      []
-    );
+    useImperativeHandle<HTMLDivElement, HTMLDivElement>(ref, () => {
+      const div = document.createElement("div");
+      Object.assign(div, {
+        resetSelection: () => {
+          setSelectedRows({});
+        },
+      });
+      return div;
+    }, []);
 
     // Initial Setup
     useEffect(() => {
@@ -626,7 +676,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                 visible: true,
                 rowGroup: false,
                 aggFunc: typeof firstItem[key] === "number" ? "sum" : undefined,
-              } as ColumnDef)
+              }) as ColumnDef
           );
 
         setColumns(extracted);
@@ -1158,7 +1208,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
           const idxInAll = gridData.findIndex(
             (r) => r === gridData[editingCell.rowIndex]
           );
-          console.log(idxInAll, "DATA");
+
           if (idxInAll !== -1) {
             const previousRecord = gridData[editingCell.rowIndex];
             const newData = [
@@ -2130,20 +2180,17 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
               >
                 <div className="w-[30px] flex justify-center items-center">
                   <Checkbox
-                    // checked={
-                    //   rowIndex !== undefined ? !!selectedRows[rowIndex] : false
-                    // }
-
                     checked={
                       treeData && rowSelection.treeSelectChildren
                         ? item.type === "data" &&
                           "nodeKey" in item &&
                           !!selectedRows[item.nodeKey]
-                        : rowIndex !== undefined && !!selectedRows[rowIndex]
+                        : isParentChildSelected(
+                            `path_${
+                              isChild ? `${parentIdentity}_` : ""
+                            }${rowIndex}`
+                          )
                     }
-                    // onCheckedChange={(checked: boolean) => {
-                    //   handleRowCheckboxChange(rowIndex, checked);
-                    // }}
                     onCheckedChange={(checked: boolean) => {
                       if (treeData && rowSelection.treeSelectChildren) {
                         if (item.type === "data" && "nodeKey" in item) {
@@ -2151,7 +2198,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                         }
                       } else {
                         if (rowIndex !== undefined) {
-                          handleFlatRowCheckboxChange(rowIndex, checked);
+                          let selectionKey = isChild
+                            ? `path_${parentIdentity}_${rowIndex}`
+                            : `path_${rowIndex}`;
+
+                          toggleParentChildSelection(
+                            selectionKey,
+                            checked,
+                            item?.row?.children as { id: number }[]
+                          );
                         }
                       }
                     }}
@@ -2494,12 +2549,12 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                                   tooltipValue !== ""
                                     ? tooltipValue
                                     : col.rowGroup
-                                    ? ""
-                                    : formatCellValue(
-                                        cellValue,
-                                        row || {},
-                                        col
-                                      );
+                                      ? ""
+                                      : formatCellValue(
+                                          cellValue,
+                                          row || {},
+                                          col
+                                        );
 
                                 return result != null ? String(result) : ""; // Ensure it's a valid string or ReactNode
                               })()}
@@ -2629,6 +2684,11 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                       columnDefs={detailGridOptions}
                       data={detailData[parentIndex]}
                       isChild={true}
+                      parentIdentity={
+                        parentIdentity
+                          ? `${parentIdentity}_${parentIndex}`
+                          : `${parentIndex}`
+                      }
                       parentRow={item.parentRow}
                       rowSelection={rowSelection}
                     />
@@ -2714,6 +2774,15 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
         >
           <TableBody>
             <TableRow>
+              {rowSelection && (
+                <TableCell
+                  style={{
+                    width: "50px",
+                    verticalAlign: "middle",
+                    textAlign: "center",
+                  }}
+                ></TableCell>
+              )}
               {displayColumns.map((col, index) => (
                 <TableCell
                   key={col.field}
@@ -2747,29 +2816,13 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
       </div>
     );
 
-    // Handler for flat (non-tree) row selection
-    const handleFlatRowCheckboxChange = (
-      rowIndex: number | string,
-      checked: boolean
-    ) => {
-      setSelectedRows((prev) => {
-        const updated = { ...prev };
-        if (checked) {
-          updated[rowIndex] = true;
-        } else {
-          delete updated[rowIndex];
-        }
-        return updated;
-      });
-    };
-
     /**
      * Handles the selection and deselection of all rows in the DataGrid when the header checkbox is toggled.
      */
     const handleHeaderCheckboxChange = (checked: boolean) => {
       if (rowSelection && rowSelection.mode === "single") {
         // In single mode, header checkbox should select only the first row or deselect all
-        if (checked && gridData.length > 0) {
+        if (checked && treeData && rowSelection?.treeSelectChildren) {
           setSelectedRows({ 0: true });
         } else {
           setSelectedRows({});
@@ -2787,13 +2840,21 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
             });
         } else {
           // Flat data: select by index
-          gridData.forEach((__, idx) => {
-            allSelected[idx] = true;
+          gridData.forEach((_data: any, idx: number) => {
+            return toggleParentChildSelection(
+              `path_${isChild ? `${parentIdentity}_${idx}` : idx}`,
+              true,
+              _data?.children ?? []
+            );
           });
         }
         setSelectedRows(allSelected);
       } else {
-        setSelectedRows({});
+        if (treeData && rowSelection?.treeSelectChildren) {
+          setSelectedRows({});
+        } else {
+          clearSelection();
+        }
       }
     };
 
@@ -3120,8 +3181,8 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                                         {sortDirection === "asc"
                                           ? "↑"
                                           : sortDirection === "desc"
-                                          ? "↓"
-                                          : ""}
+                                            ? "↓"
+                                            : ""}
                                       </th>
                                     )}
                                   {headerCells}
@@ -3229,9 +3290,7 @@ export const DataGrid = forwardRef<HTMLDivElement, DataGridProps>(
                                         "nodeKey" in item
                                     )
                                     .every((item) => selectedRows[item.nodeKey])
-                                : Object.keys(selectedRows).length > 0 &&
-                                  Object.keys(selectedRows).length ===
-                                    gridData.length
+                                : isAllSelected(flattenedRows?.length)
                             }
                             data-indeterminate={
                               treeData && rowSelection?.treeSelectChildren
