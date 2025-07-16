@@ -180,9 +180,9 @@ export const DataGrid = forwardRef<
           if (col.editorType === "time") {
             initial[col.field] = moment().format("LT");
           } else if (col.editorType === "date") {
-            initial[col.field] = new Date().toLocaleDateString();
+            initial[col.field] = moment().format();
           } else if (col.editorType === "dateTime") {
-            initial[col.field] = new Date().toLocaleString();
+            initial[col.field] = moment().format();
           } else {
             initial[col.field] = "";
           }
@@ -1800,12 +1800,23 @@ export const DataGrid = forwardRef<
         return col.valueFormatter({ value, data: row });
       }
 
-      if (col.editorType === "date" && value) {
-        // Format as YYYY-MM-DD or your preferred format
-        const date = new Date(value as string);
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleDateString(); // or use date-fns/format for custom format
-        }
+      if (col.type === "time" && value) {
+        const defaultFormat = col?.inputFromat ?? "HH:mm";
+        const formatedTime = moment(value as string, defaultFormat).format(
+          "hh:mm A"
+        );
+        return formatedTime;
+      } else if (col.type === "date" && value) {
+        const defaultFormat = col?.inputFromat ?? "MM-DD-YYYY";
+        const formatedDate = moment(value, defaultFormat).format("MM-DD-YYYY");
+        return formatedDate;
+      } else if (col.type === "dateTime" && value) {
+        const defaultFormat = col?.inputFromat ?? "YYYY-MM-DDTHH:mm:ss";
+        const outputFormat = "MM-DD-YYYY hh:mm A";
+        const formatedDateTime = moment(value, defaultFormat).format(
+          outputFormat
+        );
+        return formatedDateTime;
       }
       return value ? String(value) : "";
     };
