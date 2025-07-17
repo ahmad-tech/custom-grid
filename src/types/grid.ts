@@ -22,7 +22,7 @@ export interface ColumnDef {
     | "select"
     | "time"
     | "dateTime";
-  inputFromat?: string;
+  inputFormat?: string;
   editable?: boolean;
   width?: number;
   visible?: boolean;
