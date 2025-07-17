@@ -1801,17 +1801,17 @@ export const DataGrid = forwardRef<
       }
 
       if (col.type === "time" && value) {
-        const defaultFormat = col?.inputFromat ?? "HH:mm";
+        const defaultFormat = col?.inputFormat ?? "HH:mm";
         const formatedTime = moment(value as string, defaultFormat).format(
           "hh:mm A"
         );
         return formatedTime;
       } else if (col.type === "date" && value) {
-        const defaultFormat = col?.inputFromat ?? "MM-DD-YYYY";
+        const defaultFormat = col?.inputFormat ?? "MM-DD-YYYY";
         const formatedDate = moment(value, defaultFormat).format("MM-DD-YYYY");
         return formatedDate;
       } else if (col.type === "dateTime" && value) {
-        const defaultFormat = col?.inputFromat ?? "YYYY-MM-DDTHH:mm:ss";
+        const defaultFormat = col?.inputFormat ?? "YYYY-MM-DDTHH:mm:ss";
         const outputFormat = "MM-DD-YYYY hh:mm A";
         const formatedDateTime = moment(value, defaultFormat).format(
           outputFormat
